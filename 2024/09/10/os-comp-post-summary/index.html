@@ -3,7 +3,7 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8" />
-    <title>My First Post | 离霜的博客</title>
+    <title>系统能力大赛操作系统内核赛赛后总结 | 离霜的博客</title>
     <meta name="author" content="离霜" />
     <meta name="description" content="" />
     <meta name="keywords" content="" />
@@ -156,21 +156,26 @@
         <div id="main" :class="loading ? 'into-enter-from': 'into-enter-active'">
             <div class="article">
     <div>
-        <h1>My First Post</h1>
+        <h1>系统能力大赛操作系统内核赛赛后总结</h1>
     </div>
     <div class="info">
         <span class="date">
             <span class="icon">
                 <i class="fa-solid fa-calendar fa-fw"></i>
             </span>
-            2024/9/9
+            2024/9/10
         </span>
         
         
     </div>
     
     <div class="content" v-pre>
-        
+        <p>2024全国大学生系统能力大赛操作系统设计赛内核实现赛道（LoongArch芯片）喜提国三，但实际上我们的作品仍然有许多不足。回望半年来的开发，非常想做一个总结。也希望给那些手搓OS内核的人提供一些经验借鉴。有可能之后还会发布专栏讲解一些OS内核开发需要注意的东西。</p>
+<span id="more"></span>
+
+<h3 id="作品概览？"><a href="#作品概览？" class="headerlink" title="作品概览？"></a>作品概览？</h3><p>当前的作品在gitlab希冀上已经开源，上面也有提供相应的文档（可能写的比较粗糙）。仓库地址：<a target="_blank" rel="noopener" href="https://gitlab.eduxiji.net/T202410486992576/OSKernel2024-2k1000la-xv6">XN6 OS</a>。</p>
+<h3 id="开发进度？"><a href="#开发进度？" class="headerlink" title="开发进度？"></a>开发进度？</h3><p>当前 XN6 OS 已经支持进程管理、内存管理、设备管理、文件系统等基本模块，系统调用兼容Linux（或POSIX标准），可以运行BusyBox并进入Ash或Hush。<br><del>当前其中还有不少bug没有修正，比赛已经结束啦不想管啦哈哈哈哈哈</del></p>
+
     </div>
     
     
