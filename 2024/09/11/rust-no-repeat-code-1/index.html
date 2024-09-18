@@ -263,7 +263,28 @@ struct FatPointer(usize, usize);
 </code></pre>
 <p>这样一来，一个<code>&amp;str</code>的借用如果看成一个指针，它将是胖指针，这个指针（二元组）包含的第一个数据是指针指向的对象的地址，第二个数据是它指向对象的大小。于是我们知道了，rust通过这种方式巧妙的隐藏了对象大小，并且我们可以在动态运行时获取它！</p>
 <p>像上述这种胖指针指向的对象类型就是DST。指向DST的指针都是胖指针。对于<code>&amp;str</code>和<code>&amp;[T]</code>指针来说，第二个数据是对象的大小；而对于<code>&amp;dyn SomeTrait</code>来说，第二个数据是虚函数表的地址。在rust官方定义 <a href="#5-rust-%E6%8C%87%E9%92%88%E5%85%83%E6%95%B0%E6%8D%AE">$^{(2)}$</a> 中，第二个数据被称作<code>指针元数据</code>。对于非胖指针，即普通指针来说，元数据也是存在的，只不过它是<code>()</code>类型。</p>
-<h4 id="2-2-trait-指针"><a href="#2-2-trait-指针" class="headerlink" title="2.2. trait 指针"></a>2.2. trait 指针</h4><p>未完待续</p>
+<h4 id="2-2-trait-指针"><a href="#2-2-trait-指针" class="headerlink" title="2.2. trait 指针"></a>2.2. trait 指针</h4><p>上节讲述了Rust中的指针，这里再做一下梳理。</p>
+<p>总的来说，指针有两种，一是<code>Thin Pointer</code>，这也是在C&#x2F;C++中的传统意义的指针（这里为了方便我将它称为瘦指针）；另一种是<code>Fat Pointer</code>，这种指针的大小是的瘦指针的两倍，实际上就是有两个和瘦指针大小一样的数据，其中一个是对象地址，另一个是对象元数据。</p>
+<p>而从指针元数据的角度来说，不管瘦指针还是胖指针都有元数据，只不过瘦指针的元数据类型是<code>()</code>，不会实际占用空间，而胖指针的元数据有两种，一种是指针指向的切片对象<code>[T]</code>的大小，另一种是trait对象的虚函数表地址。所以总结起来，目前指针元数据一共三类：<code>()</code>、<code>[T]对象大小</code>、<code>trait object虚函数表地址</code>。</p>
+<p>对于 trait 对象的指针来说，其指向的 trait 对象实际上不能算是一个结构体，也不存在内部数据，因而一个 trait 对象实际上只是一组虚函数表而已。那么对于一个指向 trait 对象的指针来说，其第一个数据是什么呢？其实联系起第一节我们使用Any trait进行downcast之后，就可以猜测的出，这第一个数据的指针指向的正是原对象，换句话说，我们在进行向上转型的时候，指针的第一个数据是不会变的，所以 trait 对象指针的数据排布应当如下：</p>
+<center>
+
+<table>
+<thead>
+<tr>
+<th align="center">第一个数据</th>
+<th align="center">第二个数据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">原对象地址</td>
+<td align="center">trait 对象虚函数表地址</td>
+</tr>
+</tbody></table>
+</center>
+
+<p>利用这一点，我们可以试图获取其第一个数据，将其强制转型成为“子类”类型，这样就完成了我们的强制downcast，实际上Any trait的转型也是如此实现的。</p>
+<p>需要提一点特殊情况：如果原对象类型是单元结构体，那么此时由于没有内部数据，结构体指针本身就是随机的，或者说没有意义的，会导致upcast之后的指针第一个数据也是无意义的&#x2F;随机的。这时强制转型需要你自己考虑清楚在做些什么。</p>
 <hr>
 <h2 id="参考资料"><a href="#参考资料" class="headerlink" title=" 参考资料 "></a><center> 参考资料 </center></h2><h6 id="1-Downcasting-in-Rust"><a href="#1-Downcasting-in-Rust" class="headerlink" title="1. Downcasting in Rust"></a>1. <a target="_blank" rel="noopener" href="https://ysantos.com/blog/downcast-rust">Downcasting in Rust</a></h6><h6 id="2-Traits-dynamic-dispatch-and-upcasting"><a href="#2-Traits-dynamic-dispatch-and-upcasting" class="headerlink" title="2. Traits, dynamic dispatch and upcasting"></a>2. <a target="_blank" rel="noopener" href="https://articles.bchlr.de/traits-dynamic-dispatch-upcasting">Traits, dynamic dispatch and upcasting</a></h6><h6 id="3-Rust-RFC-2580-ptr-meta-feature"><a href="#3-Rust-RFC-2580-ptr-meta-feature" class="headerlink" title="3. Rust RFC 2580: ptr-meta feature"></a>3. <a target="_blank" rel="noopener" href="https://rust-lang.github.io/rfcs/2580-ptr-meta.html">Rust RFC 2580: ptr-meta feature</a></h6><h6 id="4-rust-lang-pull-request-81172-Implement-RFC-2580-Pointer-metadata-VTable"><a href="#4-rust-lang-pull-request-81172-Implement-RFC-2580-Pointer-metadata-VTable" class="headerlink" title="4. rust-lang pull request#81172: Implement RFC 2580: Pointer metadata &amp; VTable"></a>4. <a target="_blank" rel="noopener" href="https://github.com/rust-lang/rust/pull/81172">rust-lang pull request#81172: Implement RFC 2580: Pointer metadata &amp; VTable</a></h6><h6 id="5-rust-指针元数据"><a href="#5-rust-指针元数据" class="headerlink" title="5. rust 指针元数据"></a>5. <a target="_blank" rel="noopener" href="https://rustwiki.org/zh-CN/std/ptr/trait.Pointee.html#%E6%8C%87%E9%92%88%E5%85%83%E6%95%B0%E6%8D%AE">rust 指针元数据</a></h6>
     </div>
@@ -280,7 +301,7 @@ struct FatPointer(usize, usize);
     <div id="footer-wrap">
         <div>
             &copy;
-            2022 - 2024 离霜的博客
+            2024 - 2024 离霜的博客
             <span id="footer-icon">
                 <i class="fa-solid fa-font-awesome fa-fw"></i>
             </span>

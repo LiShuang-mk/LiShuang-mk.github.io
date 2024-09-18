@@ -277,7 +277,7 @@
     margin-left: 25px;
 }
 #home-posts .post .go-post {
-    background: linear-gradient(120deg, #9abbf7 0%, #ffbbf4 100%);
+    background: linear-gradient(120deg, #9abbf7 0%, #bbf7ff 100%);
     border: 0;
     border-radius: 20px 0;
     bottom: -5px;
@@ -579,7 +579,7 @@ body::-webkit-scrollbar-track {
     white-space: normal !important;
 }
 .language {
-    background: linear-gradient(to right, #ed6ea0 0%, #ec8c69 100%);
+    background: linear-gradient(to right, #6e81ed 0%, #cd69ec 100%);
     border-radius: 0 0 10px 10px;
     box-shadow: 1px 1px 0.75rem #ed6ea14d;
     color: #fff;
