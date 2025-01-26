@@ -1,0 +1,358 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="utf-8" />
+    <title>系统能力大赛操作系统内核赛赛后总结 | 离霜的博客</title>
+    <meta name="author" content="离霜" />
+    <meta name="description" content="" />
+    <meta name="keywords" content="" />
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <link rel="icon" href="/images/avatar.jpg" />
+    <link rel="preconnect" href="https://s4.zstatic.net" />
+<script src="https://s4.zstatic.net/ajax/libs/vue/3.3.7/vue.global.prod.min.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.cn" />
+<link rel="preconnect" href="https://fonts.gstatic.cn" crossorigin />
+<link
+    rel="stylesheet"
+    href="https://fonts.googleapis.cn/css2?family=Fira+Code:wght@400;500;600;700&family=Lexend:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700;800;900&display=swap"
+/>
+<script> const mixins = {}; </script>
+
+<script src="https://polyfill.alicdn.com/v3/polyfill.min.js?features=default"></script>
+
+
+<script src="https://s4.zstatic.net/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+<link
+    rel="stylesheet"
+    href="https://s4.zstatic.net/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+/>
+<script src="/js/lib/highlight.js"></script>
+
+
+<script src="https://s4.zstatic.net/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script src="https://s4.zstatic.net/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="https://s4.zstatic.net/ajax/libs/KaTeX/0.16.9/katex.min.css" />
+<script src="/js/lib/math.js"></script>
+
+
+<script src="/js/lib/preview.js"></script>
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/css/main.css" />
+
+<meta name="generator" content="Hexo 7.3.0"><style>mjx-container[jax="SVG"] {
+  direction: ltr;
+}
+
+mjx-container[jax="SVG"] > svg {
+  overflow: visible;
+}
+
+mjx-container[jax="SVG"][display="true"] {
+  display: block;
+  text-align: center;
+  margin: 1em 0;
+}
+
+mjx-container[jax="SVG"][justify="left"] {
+  text-align: left;
+}
+
+mjx-container[jax="SVG"][justify="right"] {
+  text-align: right;
+}
+
+g[data-mml-node="merror"] > g {
+  fill: red;
+  stroke: red;
+}
+
+g[data-mml-node="merror"] > rect[data-background] {
+  fill: yellow;
+  stroke: none;
+}
+
+g[data-mml-node="mtable"] > line[data-line] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > rect[data-frame] {
+  stroke-width: 70px;
+  fill: none;
+}
+
+g[data-mml-node="mtable"] > .mjx-dashed {
+  stroke-dasharray: 140;
+}
+
+g[data-mml-node="mtable"] > .mjx-dotted {
+  stroke-linecap: round;
+  stroke-dasharray: 0,140;
+}
+
+g[data-mml-node="mtable"] > svg {
+  overflow: visible;
+}
+
+[jax="SVG"] mjx-tool {
+  display: inline-block;
+  position: relative;
+  width: 0;
+  height: 0;
+}
+
+[jax="SVG"] mjx-tool > mjx-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+mjx-tool > mjx-tip {
+  display: inline-block;
+  padding: .2em;
+  border: 1px solid #888;
+  font-size: 70%;
+  background-color: #F8F8F8;
+  color: black;
+  box-shadow: 2px 2px 5px #AAAAAA;
+}
+
+g[data-mml-node="maction"][data-toggle] {
+  cursor: pointer;
+}
+
+mjx-status {
+  display: block;
+  position: fixed;
+  left: 1em;
+  bottom: 1em;
+  min-width: 25%;
+  padding: .2em .4em;
+  border: 1px solid #888;
+  font-size: 90%;
+  background-color: #F8F8F8;
+  color: black;
+}
+
+foreignObject[data-mjx-xml] {
+  font-family: initial;
+  line-height: normal;
+  overflow: visible;
+}
+
+.MathJax path {
+  stroke-width: 3;
+}
+
+mjx-container[display="true"] {
+  overflow: auto hidden;
+}
+
+mjx-container[display="true"] + br {
+  display: none;
+}
+</style></head>
+<body>
+    <div id="layout">
+        <transition name="fade">
+            <div id="loading" v-show="loading">
+                <div id="loading-circle">
+                    <h2>LOADING</h2>
+                    <p>加载过慢请开启缓存 浏览器默认开启</p>
+                    <img src="/images/loading.gif" />
+                </div>
+            </div>
+        </transition>
+        <div id="menu" :class="{ hidden: hiddenMenu, 'menu-color': menuColor}">
+    <nav id="desktop-menu">
+        <a class="title" href="/">
+            <span>离霜的博客</span>
+        </a>
+        
+        <a href="/">
+            <i class="fa-solid fa-house fa-fw"></i>
+            <span>&ensp;Home</span>
+        </a>
+        
+        <a href="/about">
+            <i class="fa-solid fa-id-card fa-fw"></i>
+            <span>&ensp;About</span>
+        </a>
+        
+        <a href="/archives">
+            <i class="fa-solid fa-box-archive fa-fw"></i>
+            <span>&ensp;Archives</span>
+        </a>
+        
+        <a href="/categories">
+            <i class="fa-solid fa-bookmark fa-fw"></i>
+            <span>&ensp;Categories</span>
+        </a>
+        
+        <a href="/tags">
+            <i class="fa-solid fa-tags fa-fw"></i>
+            <span>&ensp;Tags</span>
+        </a>
+        
+    </nav>
+    <nav id="mobile-menu">
+        <div class="title" @click="showMenuItems = !showMenuItems">
+            <i class="fa-solid fa-bars fa-fw"></i>
+            <span>&emsp;离霜的博客</span>
+        </div>
+        <transition name="slide">
+            <div class="items" v-show="showMenuItems">
+                
+                <a href="/">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-house fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Home</div>
+                    </div>
+                </a>
+                
+                <a href="/about">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-id-card fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">About</div>
+                    </div>
+                </a>
+                
+                <a href="/archives">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-box-archive fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Archives</div>
+                    </div>
+                </a>
+                
+                <a href="/categories">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-bookmark fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Categories</div>
+                    </div>
+                </a>
+                
+                <a href="/tags">
+                    <div class="item">
+                        <div style="min-width: 20px; max-width: 50px; width: 10%">
+                            <i class="fa-solid fa-tags fa-fw"></i>
+                        </div>
+                        <div style="min-width: 100px; max-width: 150%; width: 20%">Tags</div>
+                    </div>
+                </a>
+                
+            </div>
+        </transition>
+    </nav>
+</div>
+<transition name="fade">
+    <div id="menu-curtain" @click="showMenuItems = !showMenuItems" v-show="showMenuItems"></div>
+</transition>
+
+        <div id="main" :class="loading ? 'into-enter-from': 'into-enter-active'">
+            <div class="article">
+    <div>
+        <h1>系统能力大赛操作系统内核赛赛后总结</h1>
+    </div>
+    <div class="info">
+        <span class="date">
+            <span class="icon">
+                <i class="fa-solid fa-calendar fa-fw"></i>
+            </span>
+            2024/9/10
+        </span>
+        
+        
+    </div>
+    
+    <div class="content" v-pre>
+        <p>2024全国大学生系统能力大赛操作系统设计赛内核实现赛道（LoongArch芯片）喜提国三，但实际上我们的作品仍然有许多不足。回望半年来的开发，非常想做一个总结。也希望给那些手搓OS内核的人提供一些经验借鉴。有可能之后还会发布专栏讲解一些OS内核开发需要注意的东西。</p>
+<span id="more"></span>
+<h3 id="作品概览">作品概览？</h3>
+<p>当前的作品在gitlab希冀上已经开源，上面也有提供相应的文档（可能写的比较粗糙）。仓库地址：<a target="_blank" rel="noopener" href="https://gitlab.eduxiji.net/T202410486992576/OSKernel2024-2k1000la-xv6">XN6
+OS</a>。</p>
+<h3 id="开发进度">开发进度？</h3>
+<p>当前 XN6 OS
+已经支持进程管理、内存管理、设备管理、文件系统等基本模块，系统调用兼容Linux（或POSIX标准），可以运行BusyBox并进入Ash或Hush。<br>
+<del>当前其中还有不少bug没有修正，比赛已经结束啦不想管啦哈哈哈哈哈</del></p>
+<h1 id="壹-从xv6到c重写并支持模块化再到架构重构">壹.
+从XV6到C++重写并支持模块化，再到架构重构</h1>
+<h2 id="1-项目的起源">1. 项目的起源</h2>
+<p>最初我们的项目起源于深大的操作系统实验，那个实验是将XV6从RISCV迁移到了LoongArch上进行的一系列OS内核实验。那个实验使用的qemu是龙芯3A系列的，但是比赛使用的是2K1000，差距还是比较大的，一个用于高性能计算场景，另一个用于嵌入式工控场景，而且XV6那种设计模式并不适合用于比赛——设计太偏向于教学了，很难在这基础之上进行重型的开发。于是，我在小队里面发起了使用C++重写的提议。</p>
+<h2 id="2-为什么用c">2. 为什么用C++？</h2>
+<p>嗯，C++写的OS内核可以说非常少见了。C++作为系统编程语言与C语言兼容，但是却不适合作为OS内核这种对性能及其敏感的系统软件开发。这一点我也早就想到了，但是对于不熟悉内核实现的我们来说，C++有它独具的优势：面向对象带来的良好可读性与随着标准不断更新带来的对系统软件的支撑库越来越多。这一点对我们十分重要，良好的可读性让我们写出更可靠的代码，一些在freestanding开发中也可使用的库让代码质量更高。</p>
+<p>当然性能缺陷是明显的，在开发的后期，我已经能在debug的过程中看到许多问题：比如说大量使用Lambda和functional库使得函数调用栈变得十分长，一次系统调用就可能需要三十几个函数的调用。可以考虑一下，一次函数调用通常要将返回地址和帧指针（帧指针是可以优化掉的，但是会导致无法栈展开也无法在调试中看到调用栈）给压栈，在调用完毕后还要恢复，更糟糕的情况三如果代码组织不好，大量long-call函数更是会导致cache命中率大打折扣，使得系统调用的开销变得巨大。<br>
+但是收益是也是明显的。对于不熟悉内核实现的我们而言，我们将一个STL库移植了过来，使得我们的内核中也能使用map，vector，queue，stack等模板类型，带来了良好的类型系统设计，可读性十分可观，并且也对调试十分有利。</p>
+<p>可以说，C++避免不了性能损失，但是对于初学者而言，却具有相当的友好性。我知道肯定有人会说如果代码写的好，C++也可以做到性能很高，至少像Python是不能比的，而且同等情况下Java也没法比。但是我要说的是，这里必须理解到C++的一个重要内存模型：虚函数表结构。我相信使用C++肯定是想用到C++的虚类，它使得多态变得十分灵活，但是实际上因为C++内存模型的原因，访问虚函数需要至少两次访存，C语言使用函数指针只要一次访存够了。别杠，OS内核的优化就是这么细，甚至是指令级别的优化；如果有读过Linux内核源码就知道，Linux内核甚至还会充分发挥硬件加速，在if语句中使用分支预测以降低跳转指令带来的惩罚。</p>
+<p>虽然我们使用了C++进行内核开发，但是我想说，任何一个OS内核开发人员需要放在首位的需求一定是：性能！性能！性能！</p>
+<p>赛后我又去学习了rust，逐渐也明白了rust为什么能挑战C语言在系统软件开发方面的地位。我不得不说，rust作为一门年轻的编程语言，吸纳了很多语言的优点，也提出了许多新的概念，是真的很值得学习。</p>
+<h2 id="3-架构的演变">3. 架构的演变</h2>
+
+    </div>
+    
+    
+    
+    
+    
+    
+    
+</div>
+
+            <footer id="footer">
+    <div id="footer-wrap">
+        <div>
+            &copy;
+            2024 - 2025 离霜的博客
+            <span id="footer-icon">
+                <i class="fa-solid fa-font-awesome fa-fw"></i>
+            </span>
+            &commat;离霜
+        </div>
+        <div>
+            Based on the <a target="_blank" rel="noopener" href="https://hexo.io">Hexo Engine</a> &amp;
+            <a target="_blank" rel="noopener" href="https://github.com/theme-particlex/hexo-theme-particlex">ParticleX Theme</a>
+        </div>
+        
+    </div>
+</footer>
+
+        </div>
+        
+        <transition name="fade">
+            <div id="preview" ref="preview" v-show="previewShow">
+                <img id="preview-content" ref="previewContent" />
+            </div>
+        </transition>
+        
+    </div>
+    <script src="/js/main.js"></script>
+    
+    
+
+
+
+
+    
+</body>
+</html>
