@@ -579,10 +579,10 @@ body::-webkit-scrollbar-track {
     white-space: normal !important;
 }
 .language {
-    background: linear-gradient(to right, #6e81ed 0%, #cd69ec 100%);
+    background: linear-gradient(to right, #9faeff 0%, #edb1ff 100%);
     border-radius: 0 0 10px 10px;
     box-shadow: 1px 1px 0.75rem #ed6ea14d;
-    color: #fff;
+    color: #5000c1;
     font-size: 12px;
     font-weight: bold;
     left: 30px;
