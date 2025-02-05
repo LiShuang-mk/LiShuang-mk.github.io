@@ -305,6 +305,11 @@ Rust 参考。</p>
 <blockquote>
 <p>请注意本文不是 Rust 动态分发的教程，而是探讨一些其中的细节问题。</p>
 </blockquote>
+<p>如果不想深入探讨 Rust 的设计美学，可以跳转到实例代码快速理解：</p>
+<ul>
+<li>trait <code>CoerceUnsized</code>: <a href="#例21-从静态数组到数组切片">例2.1 从静态数组到数组切片</a></li>
+<li>trait <code>CoerceUnsized</code>: <a href="#例22-从具体类型到特质对象">例2.2 从具体类型到特质对象</a></li>
+</ul>
 <h3 id="1-从-box-说起">1. 从 Box 说起</h3>
 <p>在 Rust 中，不像 C++，new
 已经不再是关键字了。而动态内存分配则使用了一个全新的类型
@@ -445,6 +450,56 @@ between structures with one field being coerced</li>
 这样的多层复合类型也能作隐式转换。</p>
 <p>这样一来，我们可以看到，其实这个 <code>CoerceUnsized</code> trait
 给了我们一种自定义隐式转换的方式。</p>
+<p>前面说的很复杂，为了便于理解，或者为了快速理解，下面给出实际的例子说明这个
+<code>CoerceUnsized</code> 的用法。</p>
+<h5 id="例21-从静态数组到数组切片">例2.1 从静态数组到数组切片</h5>
+<p>这个例子考虑将一个泛型参数为静态数组类型的结构体转换为泛型参数为数组切片类型的结构体。</p>
+<pre class="rust"><code>#![allow(unused)]
+#![feature(unsize)]
+#![feature(coerce_unsized)]
+
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+struct MyWrap&lt;T: ?Sized&gt; {
+    ptr: *const T,
+}
+
+// CoerceUnsized 告诉编译器 MyWrap 这个结构体可以进行强制类型转换
+impl&lt;T, U&gt; CoerceUnsized&lt;MyWrap&lt;U&gt;&gt; for MyWrap&lt;T&gt;
+where
+    T: Unsize&lt;U&gt;,
+    U: ?Sized,
+{
+}
+
+fn main() {
+    let c_vec = [0_i32; 2];
+    let c = MyWrap {
+        ptr: &amp;c_vec as *const [i32; 2],
+    };
+    let cc = c as MyWrap&lt;[i32]&gt;; // 如果不实现 CoerceUnsized，这句代码就会报错
+}</code></pre>
+<h5 id="例22-从具体类型到特质对象">例2.2 从具体类型到特质对象</h5>
+<p>这个例子考虑将一个泛型参数为具体的自定义类型的结构体转换为一个泛型参数为
+trait 对象的结构体。<code>MyWrap</code>
+定义复用例2.1，这里只是给出用法。</p>
+<pre class="rust"><code>struct Sa {
+    data: i32,
+}
+
+trait Ta {}
+
+impl Ta for Sa {}
+
+fn main() {
+    let d_data = Sa { data: 100 };
+    let d = MyWrap {
+        ptr: &amp;d_data as *const Sa,
+    };
+    let dd = d as MyWrap&lt;dyn Ta&gt;; // 如果不实现 CoerceUnsized，这里的强制转换会报错
+}</code></pre>
+<h4 id="22-trait-dispatchfromdyn">2.2 trait DispatchFromDyn</h4>
+<p>未完待续</p>
 
     </div>
     
