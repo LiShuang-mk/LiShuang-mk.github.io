@@ -498,7 +498,57 @@ fn main() {
     };
     let dd = d as MyWrap&lt;dyn Ta&gt;; // 如果不实现 CoerceUnsized，这里的强制转换会报错
 }</code></pre>
-<h4 id="22-trait-dispatchfromdyn">2.2 trait DispatchFromDyn</h4>
+<h4 id="22-说点别的self-语法糖">2.2 说点别的：self 语法糖</h4>
+<p>我相信许多人对 <code>self</code>
+语法糖并不陌生，特别是对编写类脚本语言（Python、ECMAScript等）的开发者来说（我在这里说是“类脚本语言”实际上并不是某个通用的说法，只是我不敢确定这些语言是否是脚本语言罢了）。因而
+Rust
+引入了这个语法糖并不奇怪，我们确实能尝到些许“甜头”！但在类脚本语言中，由于类型限制不是那么的强，通常我们也不关心这个
+<code>self</code> 实际对应什么类型，然而，在 Rust 中这是不可能的，因为
+Rust
+可以说是有史以来的最强类型语言。实际上，相当一部分开发者接触过这些常见的
+<code>self</code> 语法糖：</p>
+<pre class="rust"><code>struct S;
+impl S {
+    fn foo1(self: Self);
+    fn foo2(self: &amp;Self);
+    fn foo3(self: &amp;mut Self);
+    fn foo4(self);
+    fn foo5(&amp;self);
+    fn foo6(&amp;mut self);
+}</code></pre>
+<p>实际上，在我大量的查阅一些 Rust
+语言参考的过程中，发现这个语法糖实际上有个较为正式的名称：<code>receiver</code>。也许我们可以把它翻译为接收器。为什么叫这个名字呢？笔者认为这和
+Rust 的语法特点有关：在 Rust
+中，结构体的数据定义和方法定义一定是分开的，这个语法糖就好像是一个方法接受到了一个对象一样，只不过这个对象的类型是
+<code>Self</code> 而已。</p>
+<p>也许我们平时并不在意这个语法糖的使用细节，因为它用起来是那么地自然，就如同我们吃糖一样甜味自然而然地就进嘴了。但是，你是否使用过下面的
+<code>self</code> 语法糖呢？</p>
+<pre class="rust"><code>struct SS;
+impl SS {
+    fn bar1(self: Box&lt;Self&gt;);
+    fn bar2(self: Rc&lt;Self&gt;);
+    fn bar3(self: Arc&lt;Self&gt;);
+    fn bar4(self: Pin&lt;&amp;Self&gt;);
+}</code></pre>
+<p>很神奇的语法对吧。第一眼看过去你甚至不知道怎么使用这些方法。实际上，<code>SS</code>
+是无法调用这些方法的。嗯？不对吧，我们明明是将这些方法写在
+<code>impl SS</code> 当中的，如果 <code>SS</code>
+对象不能调用，那还有谁能调用呢？对咯，<code>bar1</code> 需要
+<code>Box&lt;SS&gt;</code> 才能调用，<code>bar2</code> 需要
+<code>Rc&lt;Self&gt;</code> 才能调用，剩下的类似。诶？这不就相当于我们给
+<code>Box&lt;T&gt;</code> 实现了一个泛型特化
+<code>impl Box&lt;SS&gt;</code>
+吗？从结果来看，确实如此。这种语法糖让我们可以给 <code>Box</code>
+这种封装器实现外部的泛型特化，但又保留原来的 Box
+定义不变，这种语法确实很神奇。</p>
+<p>更神奇的是，这种语法糖并不是上述的
+<code>Box</code>、<code>Rc</code>、<code>Arc</code>、<code>Pin</code>
+才能做到，实际上有一个内建的 trait <code>DispatchFromDyn</code>
+用于允许封装器能够以这样的语法糖调用，并且这个 trait
+被视为一种运算方法（类似加减乘除也有对应的
+trait），相当于以运算符重载的方式来让这种语法糖生效。下面的一节我将探讨这个
+trait 的一些细节和用法。</p>
+<h4 id="23-trait-dispatchfromdyn">2.3 trait DispatchFromDyn</h4>
 <p>未完待续</p>
 
     </div>
