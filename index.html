@@ -181,11 +181,6 @@ mjx-container[display="true"] + br {
             <span>&ensp;Home</span>
         </a>
         
-        <a href="/about">
-            <i class="fa-solid fa-id-card fa-fw"></i>
-            <span>&ensp;About</span>
-        </a>
-        
         <a href="/archives">
             <i class="fa-solid fa-box-archive fa-fw"></i>
             <span>&ensp;Archives</span>
@@ -216,15 +211,6 @@ mjx-container[display="true"] + br {
                             <i class="fa-solid fa-house fa-fw"></i>
                         </div>
                         <div style="min-width: 100px; max-width: 150%; width: 20%">Home</div>
-                    </div>
-                </a>
-                
-                <a href="/about">
-                    <div class="item">
-                        <div style="min-width: 20px; max-width: 50px; width: 10%">
-                            <i class="fa-solid fa-id-card fa-fw"></i>
-                        </div>
-                        <div style="min-width: 100px; max-width: 150%; width: 20%">About</div>
                     </div>
                 </a>
                 
@@ -293,6 +279,192 @@ mjx-container[display="true"] + br {
         
 
 <div class="post">
+    <a href="/2025/02/09/rust-sys-prog-5/">
+        <h2 class="post-title">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</h2>
+    </a>
+    <div class="category-and-date">
+        
+        <span class="category">
+            <a href="/categories/Rust/">
+                <span class="icon">
+                    <i class="fa-solid fa-bookmark fa-fw"></i>
+                </span>
+                Rust
+            </a>
+        </span>
+        
+        <span class="date">
+            <span class="icon">
+                <i class="fa-solid fa-calendar fa-fw"></i>
+            </span>
+            2025/2/9
+        </span>
+        
+        
+    </div>
+    <div class="description">
+        <div class="content" v-pre>
+            
+            <p>Rust
+语言提供了前所未有的保护机制，其类型检查严格堪称举世无双，开发人员在使用
+Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
+高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
+本身的设计哲学的视角中去理解 Rust 的细节。</p>
+<p>本文是探讨动态分发的第三节，看看 Rust 如何用 trait
+来保证动态对象的安全性，涉及到动态分发与对象安全概念，难度较大。</p>
+<p>Rust 系统编程系列：</p>
+<ul>
+<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
+<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发 - 从 Box 说起">Rust 系统编程（二）：动态分发 - 从 Box 说起</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-3/" title="Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized">Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-4/" title="Rust 系统编程（四）：self 语法糖 - Receiver">Rust 系统编程（四）：self 语法糖 - Receiver</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
+</ul>
+            
+        </div>
+    </div>
+    <div class="post-tags">
+        
+        <span class="icon">
+            <i class="fa-solid fa-tags fa-fw"></i>
+        </span>
+        
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #00a596">Rust 设计哲学</a>
+        </span>
+        
+    </div>
+    <a href="/2025/02/09/rust-sys-prog-5/" class="go-post">阅读全文</a>
+</div>
+
+<div class="post">
+    <a href="/2025/02/09/rust-sys-prog-4/">
+        <h2 class="post-title">Rust 系统编程（四）：self 语法糖 - Receiver</h2>
+    </a>
+    <div class="category-and-date">
+        
+        <span class="category">
+            <a href="/categories/Rust/">
+                <span class="icon">
+                    <i class="fa-solid fa-bookmark fa-fw"></i>
+                </span>
+                Rust
+            </a>
+        </span>
+        
+        <span class="date">
+            <span class="icon">
+                <i class="fa-solid fa-calendar fa-fw"></i>
+            </span>
+            2025/2/9
+        </span>
+        
+        
+    </div>
+    <div class="description">
+        <div class="content" v-pre>
+            
+            <p>Rust
+语言提供了前所未有的保护机制，其类型检查严格堪称举世无双，开发人员在使用
+Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
+高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
+本身的设计哲学的视角中去理解 Rust 的细节。</p>
+<p>本文继续研究 Rust 的动态分发，探讨如何自定义一个封装类型的 self
+语法糖，体现 Rust 的优雅与灵活的兼并。</p>
+<p>Rust 系统编程系列：</p>
+<ul>
+<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
+<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发 - 从 Box 说起">Rust 系统编程（二）：动态分发 - 从 Box 说起</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-3/" title="Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized">Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-4/" title="Rust 系统编程（四）：self 语法糖 - Receiver">Rust 系统编程（四）：self 语法糖 - Receiver</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
+</ul>
+            
+        </div>
+    </div>
+    <div class="post-tags">
+        
+        <span class="icon">
+            <i class="fa-solid fa-tags fa-fw"></i>
+        </span>
+        
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #00a596">Rust 设计哲学</a>
+        </span>
+        
+    </div>
+    <a href="/2025/02/09/rust-sys-prog-4/" class="go-post">阅读全文</a>
+</div>
+
+<div class="post">
+    <a href="/2025/02/09/rust-sys-prog-3/">
+        <h2 class="post-title">Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</h2>
+    </a>
+    <div class="category-and-date">
+        
+        <span class="category">
+            <a href="/categories/Rust/">
+                <span class="icon">
+                    <i class="fa-solid fa-bookmark fa-fw"></i>
+                </span>
+                Rust
+            </a>
+        </span>
+        
+        <span class="date">
+            <span class="icon">
+                <i class="fa-solid fa-calendar fa-fw"></i>
+            </span>
+            2025/2/9
+        </span>
+        
+        
+    </div>
+    <div class="description">
+        <div class="content" v-pre>
+            
+            <p>Rust
+语言提供了前所未有的保护机制，其类型检查严格堪称举世无双，开发人员在使用
+Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
+高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
+本身的设计哲学的视角中去理解 Rust 的细节。</p>
+<p>本文是动态分发深入理解的正式的第一节，探讨了 Rust 是如何利用 trait
+机制将对象强制转换为动态类型的操作规范化的。</p>
+<p>Rust 系统编程系列：</p>
+<ul>
+<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
+<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发 - 从 Box 说起">Rust 系统编程（二）：动态分发 - 从 Box 说起</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-3/" title="Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized">Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-4/" title="Rust 系统编程（四）：self 语法糖 - Receiver">Rust 系统编程（四）：self 语法糖 - Receiver</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
+</ul>
+            
+        </div>
+    </div>
+    <div class="post-tags">
+        
+        <span class="icon">
+            <i class="fa-solid fa-tags fa-fw"></i>
+        </span>
+        
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #00a596">Rust 设计哲学</a>
+        </span>
+        
+    </div>
+    <a href="/2025/02/09/rust-sys-prog-3/" class="go-post">阅读全文</a>
+</div>
+
+<div class="post">
     <a href="/2025/02/05/zero-ddi/">
         <h2 class="post-title">论文阅读 ZeroDDI</h2>
     </a>
@@ -326,7 +498,16 @@ ZeroDDI 的方法，用于零样本的 DDI 分类任务，论文 原文参见 <a
     </div>
     <div class="post-tags">
         
+        <span class="icon">
+            <i class="fa-solid fa-tags fa-fw"></i>
+        </span>
         
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/DrugDiscovery/" style="color: #00bcd4">DrugDiscovery</a>
+        </span>
         
     </div>
     <a href="/2025/02/05/zero-ddi/" class="go-post">阅读全文</a>
@@ -334,7 +515,7 @@ ZeroDDI 的方法，用于零样本的 DDI 分类任务，论文 原文参见 <a
 
 <div class="post">
     <a href="/2025/01/27/rust-sys-prog-2/">
-        <h2 class="post-title">Rust 系统编程（二）：动态分发</h2>
+        <h2 class="post-title">Rust 系统编程（二）：动态分发 - 从 Box 说起</h2>
     </a>
     <div class="category-and-date">
         
@@ -359,19 +540,36 @@ ZeroDDI 的方法，用于零样本的 DDI 分类任务，论文 原文参见 <a
     <div class="description">
         <div class="content" v-pre>
             
-            <p>Rust语言提供了前所未有的保护机制，其类型检查严格堪称举世无双。Rust 系统编程系列文章旨在深入探索 Rust 的特性，给予一些在系统编程视角下的 Rust 参考。</p>
-<p>本文延续上一节的内容，但将目光移向 rust 的核心库和标准库，并探讨如何更优雅地使用 trait 与动态分发。</p>
+            <p>Rust
+语言提供了前所未有的保护机制，其类型检查严格堪称举世无双，开发人员在使用
+Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
+高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
+本身的设计哲学的视角中去理解 Rust 的细节。</p>
+<p>本文延续上一节的内容，但将目光移向 rust 的核心库和标准库，从 Box
+的定义初步认识 Rust 动态分发的优雅。</p>
 <p>Rust 系统编程系列：</p>
 <ul>
-<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait">Rust 系统编程（一）：trait</a></li>
-<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发">Rust 系统编程（二）：动态分发</a></li>
+<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
+<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发 - 从 Box 说起">Rust 系统编程（二）：动态分发 - 从 Box 说起</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-3/" title="Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized">Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-4/" title="Rust 系统编程（四）：self 语法糖 - Receiver">Rust 系统编程（四）：self 语法糖 - Receiver</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
 </ul>
             
         </div>
     </div>
     <div class="post-tags">
         
+        <span class="icon">
+            <i class="fa-solid fa-tags fa-fw"></i>
+        </span>
         
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #00bcd4">Rust 设计哲学</a>
+        </span>
         
     </div>
     <a href="/2025/01/27/rust-sys-prog-2/" class="go-post">阅读全文</a>
@@ -411,7 +609,16 @@ ZeroDDI 的方法，用于零样本的 DDI 分类任务，论文 原文参见 <a
     </div>
     <div class="post-tags">
         
+        <span class="icon">
+            <i class="fa-solid fa-tags fa-fw"></i>
+        </span>
         
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/DrugDiscovery/" style="color: #00bcd4">DrugDiscovery</a>
+        </span>
         
     </div>
     <a href="/2025/01/01/neural-euler-rotation/" class="go-post">阅读全文</a>
@@ -419,7 +626,7 @@ ZeroDDI 的方法，用于零样本的 DDI 分类任务，论文 原文参见 <a
 
 <div class="post">
     <a href="/2024/09/11/rust-sys-prog-1/">
-        <h2 class="post-title">Rust 系统编程（一）：trait</h2>
+        <h2 class="post-title">Rust 系统编程（一）：trait 的向下转型</h2>
     </a>
     <div class="category-and-date">
         
@@ -444,22 +651,36 @@ ZeroDDI 的方法，用于零样本的 DDI 分类任务，论文 原文参见 <a
     <div class="description">
         <div class="content" v-pre>
             
-            <p>Rust语言提供了前所未有的保护机制，其类型检查严格堪称举世无双。Rust
-系统编程系列文章旨在深入探索 Rust 的特性，给予一些在系统编程视角下的
-Rust 参考。</p>
+            <p>Rust
+语言提供了前所未有的保护机制，其类型检查严格堪称举世无双，开发人员在使用
+Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
+高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
+本身的设计哲学的视角中去理解 Rust 的细节。</p>
 <p>本文重点探讨 trait 的机制相对比 OOP
 语言的类与对象的定义之间的差异，以及深入理解 trait 的本质。</p>
 <p>Rust 系统编程系列：</p>
 <ul>
-<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait">Rust 系统编程（一）：trait</a></li>
-<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发">Rust 系统编程（二）：动态分发</a></li>
+<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
+<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发 - 从 Box 说起">Rust 系统编程（二）：动态分发 - 从 Box 说起</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-3/" title="Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized">Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-4/" title="Rust 系统编程（四）：self 语法糖 - Receiver">Rust 系统编程（四）：self 语法糖 - Receiver</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
 </ul>
             
         </div>
     </div>
     <div class="post-tags">
         
+        <span class="icon">
+            <i class="fa-solid fa-tags fa-fw"></i>
+        </span>
         
+        
+        
+        <span class="tag">
+            
+            <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #ff7d73">Rust 设计哲学</a>
+        </span>
         
     </div>
     <a href="/2024/09/11/rust-sys-prog-1/" class="go-post">阅读全文</a>

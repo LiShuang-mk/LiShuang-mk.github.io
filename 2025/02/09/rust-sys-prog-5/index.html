@@ -3,7 +3,7 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8" />
-    <title>Categories: DrugDiscovery | 离霜的博客</title>
+    <title>Rust 系统编程（五）：动态对象安全 - DispatchFromDyn | 离霜的博客</title>
     <meta name="author" content="离霜" />
     <meta name="description" content="" />
     <meta name="keywords" content="" />
@@ -37,6 +37,10 @@
 
 
 <script src="/js/lib/preview.js"></script>
+
+
+
+
 
 
 
@@ -179,11 +183,6 @@ mjx-container[display="true"] + br {
             <span>&ensp;Home</span>
         </a>
         
-        <a href="/about">
-            <i class="fa-solid fa-id-card fa-fw"></i>
-            <span>&ensp;About</span>
-        </a>
-        
         <a href="/archives">
             <i class="fa-solid fa-box-archive fa-fw"></i>
             <span>&ensp;Archives</span>
@@ -214,15 +213,6 @@ mjx-container[display="true"] + br {
                             <i class="fa-solid fa-house fa-fw"></i>
                         </div>
                         <div style="min-width: 100px; max-width: 150%; width: 20%">Home</div>
-                    </div>
-                </a>
-                
-                <a href="/about">
-                    <div class="item">
-                        <div style="min-width: 20px; max-width: 50px; width: 10%">
-                            <i class="fa-solid fa-id-card fa-fw"></i>
-                        </div>
-                        <div style="min-width: 100px; max-width: 150%; width: 20%">About</div>
                     </div>
                 </a>
                 
@@ -262,25 +252,20 @@ mjx-container[display="true"] + br {
 </transition>
 
         <div id="main" :class="loading ? 'into-enter-from': 'into-enter-active'">
-            <div id="archives">
-    
-    <div class="categories-tags">
-        
-        
-        
-        <span>
-            <a href="/categories/PaperReading/" style="background: #03a9f4">
-                <span class="icon">
-                    <i class="fa-solid fa-bookmark fa-fw"></i>
-                </span>
-                PaperReading
-            </a>
+            <div class="article">
+    <div>
+        <h1>Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</h1>
+    </div>
+    <div class="info">
+        <span class="date">
+            <span class="icon">
+                <i class="fa-solid fa-calendar fa-fw"></i>
+            </span>
+            2025/2/9
         </span>
         
-        
-        
-        <span>
-            <a href="/categories/Rust/" style="background: #ff7d73">
+        <span class="category">
+            <a href="/categories/Rust/">
                 <span class="icon">
                     <i class="fa-solid fa-bookmark fa-fw"></i>
                 </span>
@@ -289,66 +274,59 @@ mjx-container[display="true"] + br {
         </span>
         
         
-        
-        <span>
-            <a href="/categories/PaperReading/DrugDiscovery/" style="background: linear-gradient(120deg, #9abbf7 0%, #ffbbf4 100%)">
-                <span class="icon">
-                    <i class="fa-solid fa-bookmark fa-fw"></i>
-                </span>
-                DrugDiscovery
-            </a>
+        <span class="tags">
+            <span class="icon">
+                <i class="fa-solid fa-tags fa-fw"></i>
+            </span>
+            
+            
+            <span class="tag">
+                
+                <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #00bcd4">
+                    Rust 设计哲学
+                </a>
+            </span>
+            
         </span>
         
-        
-        
-        
     </div>
     
-    <div class="timeline">
-        <div class="timeline-tail"></div>
-        <div class="timeline-content">
-            <div class="item-time">2025/2/5</div>
-            <a href="/2025/02/05/zero-ddi/">
-                <h3>论文阅读 ZeroDDI</h3>
-            </a>
-            <div class="info">
-                
-                <span class="category">
-                    <a href="/categories/PaperReading/">
-                        <span class="icon">
-                            <i class="fa-solid fa-bookmark fa-fw"></i>
-                        </span>
-                        PaperReading
-                    </a>
-                </span>
-                
-                
-            </div>
-        </div>
+    <div class="content" v-pre>
+        <p>Rust
+语言提供了前所未有的保护机制，其类型检查严格堪称举世无双，开发人员在使用
+Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
+高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
+本身的设计哲学的视角中去理解 Rust 的细节。</p>
+<p>本文是探讨动态分发的第三节，看看 Rust 如何用 trait
+来保证动态对象的安全性，涉及到动态分发与对象安全概念，难度较大。</p>
+<p>Rust 系统编程系列：</p>
+<ul>
+<li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
+<li><a href="/2025/01/27/rust-sys-prog-2/" title="Rust 系统编程（二）：动态分发 - 从 Box 说起">Rust 系统编程（二）：动态分发 - 从 Box 说起</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-3/" title="Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized">Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-4/" title="Rust 系统编程（四）：self 语法糖 - Receiver">Rust 系统编程（四）：self 语法糖 - Receiver</a></li>
+<li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
+</ul>
+<span id="more"></span>
+<hr>
+<p>这一节，我们会来谈论 Rust
+动态分发中一个关键的概念——动态兼容（dyn-compatibility）。在过去，这被称为对象安全（object
+safety），实际上指的就是动态对象安全性。其实就是回到最初的那个
+<code>Box&lt;dyn SomeTrait&gt;</code> 这种将一个 trait
+看作是一个对象的语法。</p>
+<p>&lt;未完待续&gt;</p>
+
     </div>
     
-    <div class="timeline">
-        <div class="timeline-tail"></div>
-        <div class="timeline-content">
-            <div class="item-time">2025/1/1</div>
-            <a href="/2025/01/01/neural-euler-rotation/">
-                <h3>论文阅读 Neural Euler’s Rotation Equation</h3>
-            </a>
-            <div class="info">
-                
-                <span class="category">
-                    <a href="/categories/PaperReading/">
-                        <span class="icon">
-                            <i class="fa-solid fa-bookmark fa-fw"></i>
-                        </span>
-                        PaperReading
-                    </a>
-                </span>
-                
-                
-            </div>
-        </div>
+    
+    
+    
+    <div id="comment">
+        <div id="giscus-container" class="giscus"></div>
     </div>
+    
+    
+    
     
 </div>
 
@@ -380,6 +358,29 @@ mjx-container[display="true"] + br {
         
     </div>
     <script src="/js/main.js"></script>
+    
+    
+<script
+    src="https://giscus.app/client.js"
+    data-repo="LiShuang-mk/LiShuang-mk.github.io"
+    data-repo-id="R_kgDOMu0xkA"
+    data-category="General"
+    data-category-id="DIC_kwDOMu0xkM4CmxkX"
+    data-mapping="pathname"
+    data-strict="0"
+    data-reactions-enabled="1"
+    data-emit-metadata="0"
+    data-input-position="bottom"
+    data-theme="catppuccin_latte"
+    data-lang="zh-CN"
+    crossorigin
+    async
+></script>
+
+
+
+
+
     
 </body>
 </html>

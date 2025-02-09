@@ -3,7 +3,7 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8" />
-    <title>Rust 系统编程（二）：动态分发 - 从 Box 说起 | 离霜的博客</title>
+    <title>Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized | 离霜的博客</title>
     <meta name="author" content="离霜" />
     <meta name="description" content="" />
     <meta name="keywords" content="" />
@@ -254,14 +254,14 @@ mjx-container[display="true"] + br {
         <div id="main" :class="loading ? 'into-enter-from': 'into-enter-active'">
             <div class="article">
     <div>
-        <h1>Rust 系统编程（二）：动态分发 - 从 Box 说起</h1>
+        <h1>Rust 系统编程（三）：动态类型强制转换 - CoerceUnsized</h1>
     </div>
     <div class="info">
         <span class="date">
             <span class="icon">
                 <i class="fa-solid fa-calendar fa-fw"></i>
             </span>
-            2025/1/27
+            2025/2/9
         </span>
         
         <span class="category">
@@ -282,7 +282,7 @@ mjx-container[display="true"] + br {
             
             <span class="tag">
                 
-                <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #00a596">
+                <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #ff7d73">
                     Rust 设计哲学
                 </a>
             </span>
@@ -297,8 +297,8 @@ mjx-container[display="true"] + br {
 Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
 高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
 本身的设计哲学的视角中去理解 Rust 的细节。</p>
-<p>本文延续上一节的内容，但将目光移向 rust 的核心库和标准库，从 Box
-的定义初步认识 Rust 动态分发的优雅。</p>
+<p>本文是动态分发深入理解的正式的第一节，探讨了 Rust 是如何利用 trait
+机制将对象强制转换为动态类型的操作规范化的。</p>
 <p>Rust 系统编程系列：</p>
 <ul>
 <li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
@@ -308,71 +308,143 @@ Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
 <li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
 </ul>
 <span id="more"></span>
-<blockquote>
-<p>请注意本文不是 Rust 动态分发的教程，而是探讨一些其中的细节问题。</p>
-</blockquote>
+<p>如果不想深入探讨 Rust 的设计美学，可以跳转到实例代码快速理解：</p>
+<ul>
+<li>trait <code>CoerceUnsized</code>: <a href="#例1-从静态数组到数组切片">例(1) 从静态数组到数组切片</a></li>
+<li>trait <code>CoerceUnsized</code>: <a href="#例2-从具体类型到特质对象">例(2) 从具体类型到特质对象</a></li>
+</ul>
 <hr>
-<p>在 Rust 中，不像 C++，new
-已经不再是关键字了。而动态内存分配则使用了一个全新的类型
-<code>Box&lt;T,A&gt;</code>，它将堆上分配的内存指针进行封装，形成一种类似智能指针的类型，有点像
-C++ 后来提出的 <code>unique_ptr</code>。它的完整定义应该是：</p>
-<pre class="rust"><code>struct Box&lt;T: ?Sized, A: Allocator = Global&gt;(Unique&lt;T&gt;, A);</code></pre>
-<p>在这里，<code>Unique&lt;T&gt;</code>
-代表了一个独占所有权的指针，这保证了 <code>Box</code> 确实是拥有了变量
-<code>T</code> 的。而这个 <code>Unique</code> 的完整定义是：</p>
-<pre class="rust"><code>struct Unique&lt;T: ?Sized&gt;{
-    pointer: NonNull&lt;T&gt;,
-    _marker: PhantomData&lt;T&gt;,
-}</code></pre>
-<p>很有趣。这个 Unique 仍然不是一个裸指针定义的，它里面还套了娃
-<code>NonNull&lt;T&gt;</code>。<code>NonNull</code>
-实际上保证的是指针不为空，毕竟众所周知空指针十分危险，并且在 C/C++
-当中似乎并没有严格对它进行约束，而是由程序员来保证指针使用安全，这是不符合
-rust 设计哲学的，因而又定义了专门的类型 <code>NonNull</code>
-来对空指针进行约束，形成了一种繁琐而不失规整的、属于 rust
-独有的浪漫与优雅。当然这里面还涉及到了幽灵数据
-<code>PhantomData&lt;T&gt;</code>，笔者此时仍然没有完全搞清楚它的使用场合，此处不做讨论，但是明确一点：幽灵数据不占用空间，这是一种<strong>零成本抽象</strong>。</p>
-<pre class="rust"><code>struct NonNull&lt;T: ?Sized&gt;{
-    pointer: *const T,
-}</code></pre>
-<p>芜湖！我们的裸指针终于出现了，这个时候我们知道其实
-<code>Unique</code>
-就是一个指针，没有什么特别的，只不过它有着一些方法和特质来保证所指对象存在并且掌握所有权。</p>
-<p>嗯……虽然我们的主题是动态分发，但是我在这里说明 <code>Box</code>
-的定义主要是为了引出下面这一个神奇的语法：</p>
-<pre class="rust"><code>struct StrA;
-trait TrtB;
-impl TrtB for StrA;
-let box: Box&lt;dyn TrtB&gt; = Box::new(StrA);</code></pre>
-<p>我们可以坚信 <code>StrA</code> 与 <code>dyn TrtB</code>
-绝不是同一个类型，并且你绝不会能直接定义出具有所有权的
-<code>dyn TrtB</code> 的 trait
-对象，例如，下面的定义是过不了编译的：</p>
-<pre class="rust"><code>let a: dyn TrtB = StrA as dyn TrtB;
-// rust analyzing error:
-//   cast to unsized type: `dyn TrtB`
-//   cast to unsized type: `StrA` as `dyn TrtB`
-//   consider using a box or reference as appropriate</code></pre>
-<p>这就奇怪了，凭什么 <code>Box&lt;dyn TrtB&gt;</code>
-是可通过编译的？也许有人一下子就看出来了，笔者在前面说了那么多的
-<code>Box</code> 内部结构，就是为此做了铺垫。<code>Box</code>
-内部保存的并不是 <code>dyn TrtB</code>
-对象本身，而是一个裸指针，这意味着，在泛型封装下，看起来像是
-<code>StrA as dyn TrtB</code> 的一个隐式类型转换，实际上内部实现的却是
-<code>*const StrA as *const dyn TrtB</code>。是的，<code>Box</code>
-也没有那么神秘，但是用了一种很优雅的方式将 <code>dyn TrtB</code>
-封装了起来并且让它看上去就是一个 trait
-对象本身一样。通过这种封装，我们可以通过定义不同的接口来保证裸指针的使用正确，让所有不安全的性质在封装下得以安全，这就是
-rust 的设计哲学。</p>
-<p>不过，Rust 的类型安全设计并没有那么简单，它使用了一系列的 trait
-来保证各种场景下的类型转换安全，我们将在后续的文章中看到，这种转换不是编译器内部规定的，而是
+<p>trait
+<code>CoerceUnsized</code>，从名字上来看，意思是强制转换成不定大小类型。这个特质指示了一个指针或是一个封装，它让被指向对象可以从确定大小的类型变为不确定大小的类型，这是什么意思呢？举个例子，一个静态数组类型
+<code>[u8;2]</code> 显然就是两个 <code>u8</code>
+数据连续排列，但当我们尝试将它传入其他地方使用的时候，我们通常会传入这个数组的基地址，这个时候这个数组就会变成一种动态大小的类型了
+<code>[u8]</code>，而这个数组的长度是动态确定的（即不在编译期间确定为一个常数），在
 Rust
-核心库定义的，当然我们说这里面有编译器的参与，但是作为核心库中的一种
-trait，它让我们可以去自定义类型的隐式转换。这里十分建议去阅读核心库的代码，里面的注释也十分的详细（或者看文档也行，和注释的内容是一样的）。后续的讨论中会包括这些隐式转换或者强制转换在核心库中的注释解释，旨在深入地理解这些
-trait 的含义、原理和用法。注意，Rust
-将这一系列的安全保证抽象为了各种运算符，这些运算符都是 trait，通过实现
-trait 来做到运算符的重载。也就是说，这些转换被认为是一种
-<code>operation</code>，因而它的代码在 <code>core::ops</code> 当中。</p>
+中实际上被解释为一个胖指针，这个胖指针的元数据表示了数组长度。你会发现，这种转换在实际应用中很合理，但是面对类型检查如此严格的
+Rust
+里却有些奇怪，毕竟这是不一样的类型了。在文档中，他建议我们可以去查看 <a target="_blank" rel="noopener" href="https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md">DST
+coercion RFC</a> 和 <a target="_blank" rel="noopener" href="https://doc.rust-lang.org/nightly/core/nomicon/coercions.html">the
+nomicon entry on coercion</a> 以深入了解其中的细节。</p>
+<p>对于内建指针类型（即原来就有的，非自定义的），如果
+<code>T: Unsize&lt;U&gt;</code>，那么指向 <code>T</code>
+的指针可以通过从瘦指针转换为胖指针来隐式转换为指向 <code>U</code>
+的指针。在这里，<code>Unsize&lt;U&gt;</code> 也是一个
+trait，它表示可以转换为一个动态大小类型 <code>U</code>（Dynamic Size
+Type, DST）。此时，从瘦指针转换为胖指针的元数据是由 <code>U</code>
+决定的（当然也可能和 <code>T</code> 相关，例如上面提到的
+<code>[u8;2]</code>）。</p>
+<p>对于自定义类型，这种强制转换通过 <code>Foo&lt;T&gt;</code> 向
+<code>Foo&lt;U&gt;</code> 转换来实现，当然前提是
+<code>CoerceUnsized&lt;Foo&lt;U&gt;&gt; for Foo&lt;T&gt;</code>
+的实现是存在的。这里提到了一个关键信息，我们可以通过实现
+<code>CoerceUnsized</code>
+来让我们的泛型类型做到隐式转换，但前提是内部的泛型数据本身是可以隐式转换的，这隐含了另一条信息，就是前面说到的内建指针类型是已经实现好了的。果不其然，在后面的代码中就为内建类型实现了这个
+<code>CoerceUnsized</code>。</p>
+<pre class="rust"><code>// &amp;mut T -&gt; &amp;mut U
+impl&lt;'a, T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;&amp;'a mut U&gt; for &amp;'a mut T {}
+// &amp;mut T -&gt; &amp;U
+impl&lt;'a, 'b: 'a, T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;&amp;'a U&gt; for &amp;'b mut T {}
+// &amp;mut T -&gt; *mut U
+impl&lt;'a, T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;*mut U&gt; for &amp;'a mut T {}
+// &amp;mut T -&gt; *const U
+impl&lt;'a, T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;*const U&gt; for &amp;'a mut T {}
+
+// &amp;T -&gt; &amp;U
+impl&lt;'a, 'b: 'a, T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;&amp;'a U&gt; for &amp;'b T {}
+// &amp;T -&gt; *const U
+impl&lt;'a, T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;*const U&gt; for &amp;'a T {}
+
+// *mut T -&gt; *mut U
+impl&lt;T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;*mut U&gt; for *mut T {}
+// *mut T -&gt; *const U
+impl&lt;T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;*const U&gt; for *mut T {}
+
+// *const T -&gt; *const U
+impl&lt;T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; CoerceUnsized&lt;*const U&gt; for *const T {}</code></pre>
+<p>还需注意，文档中说明了对于一个自定义类型，<code>CoerceUnsized</code>
+只能用于只涉及一个泛型的结构体，例如
+<code>Foo&lt;T&gt;</code>，并且在其中包含 <code>T</code>
+的域只能有一个（<code>PhantomData&lt;T&gt;</code>
+除外），否则，你会收到下面的错误：</p>
+<blockquote>
+<ul>
+<li>implementing the trait <code>CoerceUnsized</code> requires multiple
+coercions</li>
+<li><code>CoerceUnsized</code> may only be implemented for a coercion
+between structures with one field being coerced</li>
+</ul>
+</blockquote>
+<p>假如，其中的 <code>T</code> 也是另一个自定义类型
+<code>Bar&lt;T&gt;</code>，那么为了让 <code>CoerceUnsized</code> 对
+<code>Foo&lt;T&gt;</code>
+生效，<code>CoerceUnsized&lt;Bar&lt;U&gt;&gt; for Bar&lt;T&gt;</code>
+必须存在，这个时候，隐式转换会将 <code>Bar&lt;T&gt;</code> 转换为
+<code>Bar&lt;U&gt;</code>，剩下的域不包含 <code>T</code>，因而直接从
+<code>Foo&lt;T&gt;</code> 拷贝至 <code>Foo&lt;U&gt;</code>。</p>
+<p>一般地，对于智能指针而言，你可能会实现一个</p>
+<pre class="rust"><code>impl&lt;T, U&gt; CoerceUnsized&lt;Ptr&lt;U&gt;&gt; for Ptr&lt;T&gt; where T: Unsize&lt;U&gt;, U: ?Sized {}</code></pre>
+<p>这其中，<code>T: ?Sized</code> 是可选的，正如前面的
+<code>[u8;2]</code> 转换为 <code>[u8]</code> 一样是从 <code>Sized</code>
+转换为 <code>Unsize&lt;[u8]</code> 的。或者严格来说，是
+<code>Box&lt;[u8;2]&gt;</code> 转换为 <code>Box&lt;[u8]</code>。</p>
+<p>对于直接嵌入 <code>T</code> 的封装类型，如 <code>Cell&lt;T&gt;</code>
+和 <code>RefCell&lt;T&gt;</code>，你可以直接实现一个</p>
+<pre class="rust"><code>impl&lt;T, U&gt; CoerceUnsized&lt;Wrap&lt;U&gt;&gt; for Wrap&lt;T&gt; where T: CoerceUnsized&lt;U&gt; {}</code></pre>
+<p>这样，就可以让 <code>Cell&lt;Box&lt;T&gt;&gt;</code>
+这样的多层复合类型也能作隐式转换。</p>
+<p>这样一来，我们可以看到，其实这个 <code>CoerceUnsized</code> trait
+给了我们一种自定义隐式转换的方式。</p>
+<p>前面说的很复杂，为了便于理解，或者为了快速理解，下面给出实际的例子说明这个
+<code>CoerceUnsized</code> 的用法。</p>
+<h5 id="例1-从静态数组到数组切片">例(1) 从静态数组到数组切片</h5>
+<p>这个例子考虑将一个泛型参数为静态数组类型的结构体转换为泛型参数为数组切片类型的结构体。</p>
+<pre class="rust"><code>#![allow(unused)]
+#![feature(unsize)]
+#![feature(coerce_unsized)]
+
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+struct MyWrap&lt;T: ?Sized&gt; {
+    ptr: *const T,
+}
+
+// CoerceUnsized 告诉编译器 MyWrap 这个结构体可以进行强制类型转换
+impl&lt;T, U&gt; CoerceUnsized&lt;MyWrap&lt;U&gt;&gt; for MyWrap&lt;T&gt;
+where
+    T: Unsize&lt;U&gt;,
+    U: ?Sized,
+{
+}
+
+fn main() {
+    let c_vec = [0_i32; 2];
+    let c = MyWrap {
+        ptr: &amp;c_vec as *const [i32; 2],
+    };
+    let cc = c as MyWrap&lt;[i32]&gt;; // 如果不实现 CoerceUnsized，这句代码就会报错
+}</code></pre>
+<h5 id="例2-从具体类型到特质对象">例(2) 从具体类型到特质对象</h5>
+<p>这个例子考虑将一个泛型参数为具体的自定义类型的结构体转换为一个泛型参数为
+trait 对象的结构体。<code>MyWrap</code>
+定义复用例2.1，这里只是给出用法。</p>
+<pre class="rust"><code>struct Sa {
+    data: i32,
+}
+
+trait Ta {}
+
+impl Ta for Sa {}
+
+fn main() {
+    let d_data = Sa { data: 100 };
+    let d = MyWrap {
+        ptr: &amp;d_data as *const Sa,
+    };
+    let dd = d as MyWrap&lt;dyn Ta&gt;; // 如果不实现 CoerceUnsized，这里的强制转换会报错
+}</code></pre>
+<h3 id="结语">结语</h3>
+<p>使用一句话来概括一下：<strong><code>CoerceUnsized</code>
+提供一种标记，它告诉编译器将某一个静态定义的对象强制转换为动态大小的对象（DST）是合法的。</strong></p>
 
     </div>
     

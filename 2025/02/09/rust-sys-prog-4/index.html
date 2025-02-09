@@ -3,7 +3,7 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8" />
-    <title>Rust 系统编程（二）：动态分发 - 从 Box 说起 | 离霜的博客</title>
+    <title>Rust 系统编程（四）：self 语法糖 - Receiver | 离霜的博客</title>
     <meta name="author" content="离霜" />
     <meta name="description" content="" />
     <meta name="keywords" content="" />
@@ -254,14 +254,14 @@ mjx-container[display="true"] + br {
         <div id="main" :class="loading ? 'into-enter-from': 'into-enter-active'">
             <div class="article">
     <div>
-        <h1>Rust 系统编程（二）：动态分发 - 从 Box 说起</h1>
+        <h1>Rust 系统编程（四）：self 语法糖 - Receiver</h1>
     </div>
     <div class="info">
         <span class="date">
             <span class="icon">
                 <i class="fa-solid fa-calendar fa-fw"></i>
             </span>
-            2025/1/27
+            2025/2/9
         </span>
         
         <span class="category">
@@ -282,7 +282,7 @@ mjx-container[display="true"] + br {
             
             <span class="tag">
                 
-                <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #00a596">
+                <a href="/tags/Rust-%E8%AE%BE%E8%AE%A1%E5%93%B2%E5%AD%A6/" style="color: #ff7d73">
                     Rust 设计哲学
                 </a>
             </span>
@@ -297,8 +297,8 @@ mjx-container[display="true"] + br {
 Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
 高度抽象的烦恼。Rust 系统编程系列文章旨在深入探索 Rust 的特性，从 Rust
 本身的设计哲学的视角中去理解 Rust 的细节。</p>
-<p>本文延续上一节的内容，但将目光移向 rust 的核心库和标准库，从 Box
-的定义初步认识 Rust 动态分发的优雅。</p>
+<p>本文继续研究 Rust 的动态分发，探讨如何自定义一个封装类型的 self
+语法糖，体现 Rust 的优雅与灵活的兼并。</p>
 <p>Rust 系统编程系列：</p>
 <ul>
 <li><a href="/2024/09/11/rust-sys-prog-1/" title="Rust 系统编程（一）：trait 的向下转型">Rust 系统编程（一）：trait 的向下转型</a></li>
@@ -308,71 +308,146 @@ Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
 <li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
 </ul>
 <span id="more"></span>
-<blockquote>
-<p>请注意本文不是 Rust 动态分发的教程，而是探讨一些其中的细节问题。</p>
-</blockquote>
+<p>如果不想深入探讨 Rust 的设计美学，可以跳转到实例代码快速理解：</p>
+<ul>
+<li>trait <code>Receiver</code>: <a href="#例1-receiver-的使用">例(1)
+Receiver 的使用</a></li>
+<li>trait <code>Receiver</code>: <a href="#例2-receiver-的链式解释">例(2) Receiver 的链式解释</a></li>
+</ul>
 <hr>
-<p>在 Rust 中，不像 C++，new
-已经不再是关键字了。而动态内存分配则使用了一个全新的类型
-<code>Box&lt;T,A&gt;</code>，它将堆上分配的内存指针进行封装，形成一种类似智能指针的类型，有点像
-C++ 后来提出的 <code>unique_ptr</code>。它的完整定义应该是：</p>
-<pre class="rust"><code>struct Box&lt;T: ?Sized, A: Allocator = Global&gt;(Unique&lt;T&gt;, A);</code></pre>
-<p>在这里，<code>Unique&lt;T&gt;</code>
-代表了一个独占所有权的指针，这保证了 <code>Box</code> 确实是拥有了变量
-<code>T</code> 的。而这个 <code>Unique</code> 的完整定义是：</p>
-<pre class="rust"><code>struct Unique&lt;T: ?Sized&gt;{
-    pointer: NonNull&lt;T&gt;,
-    _marker: PhantomData&lt;T&gt;,
-}</code></pre>
-<p>很有趣。这个 Unique 仍然不是一个裸指针定义的，它里面还套了娃
-<code>NonNull&lt;T&gt;</code>。<code>NonNull</code>
-实际上保证的是指针不为空，毕竟众所周知空指针十分危险，并且在 C/C++
-当中似乎并没有严格对它进行约束，而是由程序员来保证指针使用安全，这是不符合
-rust 设计哲学的，因而又定义了专门的类型 <code>NonNull</code>
-来对空指针进行约束，形成了一种繁琐而不失规整的、属于 rust
-独有的浪漫与优雅。当然这里面还涉及到了幽灵数据
-<code>PhantomData&lt;T&gt;</code>，笔者此时仍然没有完全搞清楚它的使用场合，此处不做讨论，但是明确一点：幽灵数据不占用空间，这是一种<strong>零成本抽象</strong>。</p>
-<pre class="rust"><code>struct NonNull&lt;T: ?Sized&gt;{
-    pointer: *const T,
-}</code></pre>
-<p>芜湖！我们的裸指针终于出现了，这个时候我们知道其实
-<code>Unique</code>
-就是一个指针，没有什么特别的，只不过它有着一些方法和特质来保证所指对象存在并且掌握所有权。</p>
-<p>嗯……虽然我们的主题是动态分发，但是我在这里说明 <code>Box</code>
-的定义主要是为了引出下面这一个神奇的语法：</p>
-<pre class="rust"><code>struct StrA;
-trait TrtB;
-impl TrtB for StrA;
-let box: Box&lt;dyn TrtB&gt; = Box::new(StrA);</code></pre>
-<p>我们可以坚信 <code>StrA</code> 与 <code>dyn TrtB</code>
-绝不是同一个类型，并且你绝不会能直接定义出具有所有权的
-<code>dyn TrtB</code> 的 trait
-对象，例如，下面的定义是过不了编译的：</p>
-<pre class="rust"><code>let a: dyn TrtB = StrA as dyn TrtB;
-// rust analyzing error:
-//   cast to unsized type: `dyn TrtB`
-//   cast to unsized type: `StrA` as `dyn TrtB`
-//   consider using a box or reference as appropriate</code></pre>
-<p>这就奇怪了，凭什么 <code>Box&lt;dyn TrtB&gt;</code>
-是可通过编译的？也许有人一下子就看出来了，笔者在前面说了那么多的
-<code>Box</code> 内部结构，就是为此做了铺垫。<code>Box</code>
-内部保存的并不是 <code>dyn TrtB</code>
-对象本身，而是一个裸指针，这意味着，在泛型封装下，看起来像是
-<code>StrA as dyn TrtB</code> 的一个隐式类型转换，实际上内部实现的却是
-<code>*const StrA as *const dyn TrtB</code>。是的，<code>Box</code>
-也没有那么神秘，但是用了一种很优雅的方式将 <code>dyn TrtB</code>
-封装了起来并且让它看上去就是一个 trait
-对象本身一样。通过这种封装，我们可以通过定义不同的接口来保证裸指针的使用正确，让所有不安全的性质在封装下得以安全，这就是
-rust 的设计哲学。</p>
-<p>不过，Rust 的类型安全设计并没有那么简单，它使用了一系列的 trait
-来保证各种场景下的类型转换安全，我们将在后续的文章中看到，这种转换不是编译器内部规定的，而是
+<p>我相信许多人对 <code>self</code>
+语法糖并不陌生，特别是对编写类脚本语言（Python、ECMAScript等）的开发者来说（我在这里说是“类脚本语言”实际上并不是某个通用的说法，只是我不敢确定这些语言是否是脚本语言罢了）。因而
 Rust
-核心库定义的，当然我们说这里面有编译器的参与，但是作为核心库中的一种
-trait，它让我们可以去自定义类型的隐式转换。这里十分建议去阅读核心库的代码，里面的注释也十分的详细（或者看文档也行，和注释的内容是一样的）。后续的讨论中会包括这些隐式转换或者强制转换在核心库中的注释解释，旨在深入地理解这些
-trait 的含义、原理和用法。注意，Rust
-将这一系列的安全保证抽象为了各种运算符，这些运算符都是 trait，通过实现
-trait 来做到运算符的重载。也就是说，这些转换被认为是一种
-<code>operation</code>，因而它的代码在 <code>core::ops</code> 当中。</p>
+引入了这个语法糖并不奇怪，我们确实能尝到些许“甜头”！但在类脚本语言中，由于类型限制不是那么的强，通常我们也不关心这个
+<code>self</code> 实际对应什么类型，然而，在 Rust 中这是不可能的，因为
+Rust
+可以说是有史以来的最强类型语言。实际上，相当一部分开发者接触过这些常见的
+<code>self</code> 语法糖：</p>
+<pre class="rust"><code>struct S;
+impl S {
+    fn foo1(self: Self);
+    fn foo2(self: &amp;Self);
+    fn foo3(self: &amp;mut Self);
+    fn foo4(self);
+    fn foo5(&amp;self);
+    fn foo6(&amp;mut self);
+}</code></pre>
+<p>实际上，在我大量的查阅一些 Rust
+语言参考的过程中，发现这个语法糖实际上有个较为正式的名称：<code>receiver</code>。也许我们可以把它翻译为接收器。为什么叫这个名字呢？笔者认为这和
+Rust 的语法特点有关：在 Rust
+中，结构体的数据定义和方法定义一定是分开的，这个语法糖就好像是一个方法接受到了一个对象一样，只不过这个对象的类型是
+<code>Self</code> 而已。</p>
+<p>也许我们平时并不在意这个语法糖的使用细节，因为它用起来是那么地自然，就如同我们吃糖一样甜味自然而然地就进嘴了。但是，你是否使用过下面的
+<code>self</code> 语法糖呢？</p>
+<pre class="rust"><code>struct SS;
+impl SS {
+    fn bar1(self: Box&lt;Self&gt;);
+    fn bar2(self: Rc&lt;Self&gt;);
+    fn bar3(self: Arc&lt;Self&gt;);
+    fn bar4(self: Pin&lt;&amp;Self&gt;);
+}</code></pre>
+<p>很神奇的语法对吧。第一眼看过去你甚至不知道怎么使用这些方法。实际上，<code>SS</code>
+是无法调用这些方法的。嗯？不对吧，我们明明是将这些方法写在
+<code>impl SS</code> 当中的，如果 <code>SS</code>
+对象不能调用，那还有谁能调用呢？对咯，<code>bar1</code> 需要
+<code>Box&lt;SS&gt;</code> 才能调用，<code>bar2</code> 需要
+<code>Rc&lt;Self&gt;</code> 才能调用，剩下的类似。诶？这不就相当于我们给
+<code>Box&lt;T&gt;</code> 实现了一个泛型特化
+<code>impl Box&lt;SS&gt;</code>
+吗？从结果来看，确实如此。这种语法糖让我们可以给 <code>Box</code>
+这种封装器实现外部的泛型特化，但又保留原来的 Box
+定义不变，这种语法确实很神奇。</p>
+<p>更神奇的是，这种语法糖并不是上述的
+<code>Box</code>、<code>Rc</code>、<code>Arc</code>、<code>Pin</code>
+才能做到，实际上有一个内建的 trait <code>Receiver</code>
+用于允许封装器能够以这样的语法糖调用，并且这个 trait
+被视为一种运算方法（类似加减乘除也有对应的
+trait），相当于以运算符重载的方式来让这种语法糖生效。</p>
+<h5 id="例1-receiver-的使用">例(1) Receiver 的使用</h5>
+<p>对于
+<code>Receiver</code>，在核心库注释中给出的解释是：用于表示一个结构体可以被用于一个方法的
+receiver，也就是说，一个类型可以用这个类型作为 self
+的类型，就像这样：</p>
+<pre class="rust"><code>use core::ops::Receiver;
+
+struct SmartPointer&lt;T&gt;(T);
+
+impl&lt;T&gt; Receiver for SmartPointer&lt;T&gt; {
+    type Target = T;
+}
+
+struct MyContainedType;
+
+impl MyContainedType {
+    fn method(self: SmartPointer&lt;Self&gt;) {
+        // ...
+    }
+}
+
+fn main() {
+    let ptr = SmartPointer(MyContainedType);
+    ptr.method();
+}</code></pre>
+<h5 id="section"></h5>
+<p>不过，使用 <code>Receiver</code> 有一个前提，需要开启一个不稳定的
+feature：<code>arbitrary_self_types</code>。实际上，参阅核心库时，你会发现一个相似的
+trait
+<code>LegacyReceiver</code>，它们之间唯一的区别是，是否存在关联类型
+Target。不过 <code>LegacyReceiver</code> 会在将来被弃用，而
+<code>arbitrary_self_types</code> 也在将来会变得稳定，因而
+<code>Receiver</code> 显然更为安全。</p>
+<p><del>关于 <code>Receiver</code> 中的关联类型
+Target，笔者目前没有发现它的用处，也许你能在核心库提到的相关问题
+<code>44874</code> 的讨论中得到答案，这里不再深入了。</del>（下面的<a href="#例24-receiver-的链式解引用">例2.4</a>解释了 Target 的用处）
+不过经过笔者实验可以肯定的是，这个 Target 并不会将自定义类型解引用成
+T，这意味着它不具有类似于 <code>Deref&lt;T&gt;</code>
+的行为，但是实际上实现 <code>Deref&lt;T&gt;</code>
+的结构体会自动实现它。核心库的注释中也提到了：所有实现了
+<code>Deref</code> 的结构体都被空白地实现了这个
+trait，因此你很少会使用它（因为使用 <code>Deref</code>
+就够了）。如果你需要实现一个不能实现 <code>Deref</code>
+的智能指针时，你才会去使用它；这种情况也许是因为你遇到了其他编程语言并且不能保证引用可以遵守
+Rust 的别名规则。</p>
+<h5 id="例2-receiver-的链式解释">例(2) Receiver 的链式解释</h5>
+<p>需要注意的一点是，核心库的注释最后还提到了编译器对
+<code>Receiver</code> 的解释方法。这里必须要区别解引用
+<code>Deref</code>，因为看起来 <code>Receiver</code>
+是将一个类型解释为关联类型
+Target，但实际上并不会发生编译期的解引用，也就是说，你不能看做是一种别名来调用
+Target 的方法，你调用的仍然是外部的封装类型。但这个 Target
+会被链式地检查，即关联类型 Target 也是一个实现了 <code>Receiver</code>
+的类型的话会递归地进行解释直至出现最末尾的没有实现的
+<code>Receiver</code> 的 Target
+为止，最后解释出来的类型会代替最开始的封装类型而检查合法性。最后解释出来的类型必须是
+Self 或者 Self 的引用或指针（如果是指针的话，需要开启
+<code>arbitrary_self_types_pointers</code> 特性），这意味着，实际上
+<code>Box&lt;T&gt;</code> 也是如此工作的，最后会被解释为
+<code>&amp;T</code>，从而符合 self
+语法糖最起初的规则。核心库中也给了这种链式解释的例子：</p>
+<pre class="rust"><code>use std::boxed::Box;
+use std::rc::Rc;
+
+// Both `Box` and `Rc` (indirectly) implement Receiver
+struct MyContainedType;
+
+fn main() {
+    let t = Rc::new(Box::new(MyContainedType));
+    t.method_a();
+    t.method_b();
+    t.method_c();
+}
+
+impl MyContainedType {
+    fn method_a(&amp;self) {}
+    fn method_b(self: &amp;Box&lt;Self&gt;) {}
+    fn method_c(self: &amp;Rc&lt;Box&lt;Self&gt;&gt;) {}
+}</code></pre>
+<h3 id="结语">结语</h3>
+<p>概括一下 <code>Receiver</code> 的作用：<strong>这个 trait
+提供一种标记，让编译器认为这种类型作为其他类型方法的 receiver
+是合法的。</strong> 这里我们可以看出 receiver
+这种语法比起传统面向对象语言的对象调用方法更具有灵活性，它使得一个类型的方法可以拥有外部实现，而
+<code>Receiver</code> 则告诉编译器这种外部实现是合法的。</p>
 
     </div>
     
