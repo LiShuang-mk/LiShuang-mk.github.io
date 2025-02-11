@@ -308,13 +308,384 @@ Rust 语言的时候能够得到优雅的可读性，但是也受到 Rust
 <li><a href="/2025/02/09/rust-sys-prog-5/" title="Rust 系统编程（五）：动态对象安全 - DispatchFromDyn">Rust 系统编程（五）：动态对象安全 - DispatchFromDyn</a></li>
 </ul>
 <span id="more"></span>
+<p>如果不想深入探讨 Rust 的设计美学，可以跳转到实例代码快速理解：</p>
+<ul>
+<li>动态兼容反例：<a href="#例1-动态不兼容关联常量">例(1)
+动态不兼容：关联常量</a></li>
+<li>动态兼容反例：<a href="#例2-动态不兼容关联类型具有泛型">例(2)
+动态不兼容：关联类型具有泛型</a></li>
+<li>可分发函数反例：<a href="#例3-不可分发的函数泛型函数">例(3)
+不可分发的函数：泛型函数</a></li>
+<li>可分发函数反例：<a href="#例4-不可分发的函数具有-self-类型的形参">例(4)
+不可分发的函数：具有 Self 类型的形参</a></li>
+<li>可分发函数反例：<a href="#例5-不可分发的函数没有接收器">例(5)
+不可分发的函数：没有接收器</a></li>
+<li>可分发函数反例：<a href="#例6-不可分发的函数返回-impl-trait">例(6)
+不可分发的函数：返回 impl Trait</a></li>
+<li>动态兼容反例：<a href="#例7-动态不兼容使用未实现-dispatchfromdyn-的类型作为接收器">例(7)
+动态不兼容：使用未实现 DispatchFromDyn 的类型作为接收器</a></li>
+<li>trait DispatchFromDyn：<a href="#例8-dispatchfromdyn-的简单用法">例(8) DispatchFromDyn
+的简单用法</a></li>
+</ul>
 <hr>
 <p>这一节，我们会来谈论 Rust
-动态分发中一个关键的概念——动态兼容（dyn-compatibility）。在过去，这被称为对象安全（object
+动态分发中一个关键的概念——动态兼容（dyn-compatibility）<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a>。在过去，这被称为对象安全（object
 safety），实际上指的就是动态对象安全性。其实就是回到最初的那个
 <code>Box&lt;dyn SomeTrait&gt;</code> 这种将一个 trait
-看作是一个对象的语法。</p>
-<p>&lt;未完待续&gt;</p>
+看作是一个对象的语法。当然这不是我们这一节的最终目的，我们的目的是学会使用
+<code>DispatchFromDyn</code> 这个
+trait，让我们进一步地认识动态对象分发时的安全问题；但在这之前，我们很有必要首先理解何谓动态兼容。</p>
+<h3 id="1-动态兼容">1 动态兼容</h3>
+<h6 id="-初识动态兼容">&gt; 初识动态兼容</h6>
+<p>十分建议去阅读《Rust 参考》中对动态兼容的解释<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a>。不过在这里，我希望能把参考书中对动态兼容的解释阐释得更透彻。所谓动态兼容是相对于
+trait 对象而言的，一个动态兼容的 trait 可以让我们使用
+<code>dyn Trait</code>
+这样的类型。当然我们不能够直接使用类型本身，只能使用这种动态类型的引用或者指针，就如同我们使用数组切片一样，因为它的大小是动态确定的，我们无法在编译期间获得它的大小。</p>
+<p>实际上，《Rust 参考》中对动态兼容的解释直接给出了动态兼容的条件：</p>
+<ul>
+<li>所有的 超类trait<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a>
+都必须动态兼容；（这里我们不探讨何为超类trait，感兴趣的可以在《Rust
+参考》中深入学习）</li>
+<li><code>Sized</code> 不能够作为超类trait；</li>
+<li>必须没有关联常量；</li>
+<li>必须没有关联的泛型类型；</li>
+<li>所有的关联函数必须要么可以从 trait
+对象分发（可分发函数我们在下一小节中探讨），要么显式地不可分发：
+<ul>
+<li>可分发的函数必须满足：
+<ul>
+<li>没有任何类型参数（生命周期除外）；</li>
+<li>除了接收器 self 之外，其他参数不能够使用 Self 类型；</li>
+<li>接收器为下列类型之一：
+<ul>
+<li><code>&amp;Self</code> (也就是 <code>&amp;self</code>)；</li>
+<li><code>&amp;mut Self</code> (也就是
+<code>&amp;mut self</code>)；</li>
+<li><code>Box&lt;Self&gt;</code>；</li>
+<li><code>Rc&lt;Self&gt;</code>；</li>
+<li><code>Arc&lt;Self&gt;</code>；</li>
+<li><code>Pin&lt;P&gt;</code>，其中 <code>P</code> 是上述类型之一；</li>
+</ul></li>
+<li>不能有不透明的返回类型：
+<ul>
+<li>不能是 <code>async fn</code>（该类型隐式地包含 <code>Future</code>
+类型）；</li>
+<li>返回的位置不能是 <code>impl Trait</code> 类型（类似于
+<code>fn example(&amp;self) -&gt; impl Trait</code>）；</li>
+</ul></li>
+<li>不能有 <code>where Self: Sized</code> 约束（这意味着接收器类型
+<code>Self</code> 拥有这个约束）；</li>
+</ul></li>
+<li>显式不可分发的函数要求：
+<ul>
+<li>拥有 <code>where Self: Sized</code> 约束；</li>
+</ul></li>
+</ul></li>
+</ul>
+<p>看上去很复杂对吧——实际上一点也不简单。先看简单的，超类trait必须动态兼容这一要求是很自然的，因为编译器不知道开发人员是否确实使用了超类trait的方法，如果超类trait不是动态兼容的，那么使用
+trait 对象去调用它时可能发生问题。而 Sized
+不能够作为超类trait也是自然的，因为 trait
+对象是动态对象，不可能具有固定大小的特质。剩下的要求就显得有些复杂了。</p>
+<p>我们还是先从 trait
+的底层本质来看待这个问题，因为我们需要搞清楚为什么需要动态兼容。还记得本系列文章第一篇介绍的
+trait 的向下转型中对 trait 本质的介绍吗？一个 trait
+的引用实际上是一个胖指针，一部分是对象的数据地址，另一部分是对象的元数据，而对于一个
+trait
+对象来说，这个元数据就是虚函数表的地址。这意味着什么呢？我们知道，trait
+对象的虚函数表是动态分派的，所以我们的 trait
+对象是一个不定大小的类型，但是你会发现 trait
+对象的引用始终是一个胖指针，而胖指针是编译期间就知道大小的类型，换句话说，Rust
+利用指针的灵活性使得本应该动态确定大小的类型，使用指针这种静态确定大小的类型来代替表示。进一步地，如果我们<strong>遇到不能够在编译期间获取的值时，我们就无法为
+trait
+对象生成正确的虚函数表</strong>。这就是动态兼容存在的意义。一个动态兼容的
+trait
+不应当包含不能够在编译期间获取的值。这样我们就可以理解为什么动态兼容不允许有关联的常量和泛型类型了。</p>
+<h6 id="例1-动态不兼容关联常量">例(1) 动态不兼容：关联常量</h6>
+<pre class="rust"><code>// 这是一个动态不兼容的 trait
+trait DynIncompatible {
+    // 错误：不可以有关联常量
+    // &gt; 关联常量可能与不同的具体类型有关
+    // &gt; 当有多个类型均实现这个 trait 的关联常量时
+    // &gt; 编译器无法确定 trait 对象应当使用哪个常量
+    const CONST: i32 = 1;
+}
+
+struct StrA;
+struct SrtB;
+
+impl DynIncompatible for StrA {
+    // CONST 使用默认值
+}
+impl DynIncompatible for StrB {
+    // 定义自己的关联常量
+    const CONST: i32 = 10;
+}
+
+static b: StrB = StrB;
+fn main() {
+    let pb = &amp;b as &amp;dyn DynIncompatible;
+    let _ = pb.CONST; // 注意此处，编译器生成时无法确定动态生成的pb应当使用哪个CONST
+}</code></pre>
+<h6 id="例2-动态不兼容关联类型具有泛型">例(2)
+动态不兼容：关联类型具有泛型</h6>
+<pre class="rust"><code>// 这是一个动态不兼容的 trait
+trait DynIncompatible {
+    // 错误：关联类型不可以具有泛型
+    // &gt; 关联类型可能与不同的具体类型有关
+    // &gt; 当有多个类型均实现这个 trait 的关联类型时
+    // &gt; 编译器无法确定 trait 对象应当使用哪个关联类型
+    type Target&lt;T&gt;;
+}
+
+trait StrA;
+trait StrB;
+trait Wrap&lt;T&gt;(T);
+
+impl DynIncompatible for StrA {
+    type Target&lt;T&gt; = Wrap&lt;T&gt;;
+}
+impl DynIncompatible for StrB {
+    type Target&lt;T&gt; = Wrap&lt;T&gt;;
+}
+
+static a: StrA = StrA;
+fn main() {
+    // 即便我们显式地声明 Target 应当是 Wrap 类型，
+    // 但是泛型 T 是必须要编译期间确定的，
+    // 有可能对于 StrB 来说，T = i16，
+    // 因而需要在动态期间确定 T 的大小，这与泛型的使用是不兼容的
+    let p = &amp;a as &amp;dyn DynIncompatible&lt;Target&lt;_&gt; = Wrap&lt;i32&gt;&gt;;
+}</code></pre>
+<h3 id="2-可分发的函数">2 可分发的函数</h3>
+<h6 id="-动态兼容与可分发函数的关系">&gt;
+动态兼容与可分发函数的关系</h6>
+<p>准确来说，我们应该称之为可为动态对象分发方法的函数。当我们使用一个
+trait 对象的时候，自然是希望使用这个 trait
+作为接口来实现多态地方法调用。这里有个概念需要理清楚：<strong>动态兼容意味着编译器能够为动态对象生成正确的虚函数表，但不代表开发者为
+trait
+实现的所有方法都能够被动态对象调用，只有那些可分发的函数可以被动态对象调用</strong>。一个动态兼容的
+trait
+当然可以拥有不可分发的函数，这不影响动态对象的使用，只不过这些不可分发的函数不能成为动态对象的方法。我们看到，参考书中给出的不可分发的函数要求是具有
+<code>where Self: Sized</code>
+的显式声明，这意味着只有那些具体类型（即结构体
+struct）能够调用这些函数，因为具体类型是编译期间已知大小的，动态大小类型（DST）是编译期间未知大小的。这种方法不具有多态的特质，不是我们想要的，因而接下来我们深入探讨什么样的函数是可分发的，并且为什么这样的函数可分发。</p>
+<h6 id="-具有类型参数的函数不可分发">&gt;
+具有类型参数的函数不可分发</h6>
+<p>实际上这和前面的带有泛型的关联类型是类似的。具有类型参数的函数就是泛型函数，而泛型是需要编译期确定，编译器为每个泛型的实例生成单独的代码，但在动态对象的虚函数表中，对应这个函数的位置只有一个，编译器无法确定使用哪一个实例函数填入。但与前面的情况不同的是，即便编译器无法确定这个泛型函数，但是其他函数是不受影响的，因而生成虚函数表时不会给这个函数预留位置，动态对象无法调用这个函数，因而该函数不可分发，但是
+trait 仍然满足动态兼容的条件。</p>
+<p>特别地，生命周期也是泛型，但是不受这个条件约束。因为在 Rust
+中，生命周期完全由编译器确定，因而所有的生命周期是编译期可知的。</p>
+<h6 id="例3-不可分发的函数泛型函数">例(3) 不可分发的函数：泛型函数</h6>
+<pre class="rust"><code>// 这个 trait 是动态兼容的，但是里面的方法不可分发到一个动态对象上
+trait NonDispatchable {
+    // 泛型与虚函数表不兼容
+    fn typed&lt;T&gt;(&amp;self, x: T) where Self: Sized {}
+}
+
+struct StrA;
+impl NonDispatchable for StrA;
+
+static a: StrA = StrA;
+fn main() {
+    // 这个动态对象的引用是可以创建成功的，因为动态兼容
+    let p = &amp;a as &amp;dyn NonDispatchable;
+    // 错误：这个方法不可分发到动态对象上
+    p.type(10_i32); 
+}</code></pre>
+<p>换句话说，如果你希望使用泛型函数，你仍然有办法保证动态对象的创建，但是这个泛型函数将无法被动态对象所使用。注意，为了创建不可分发的函数，需要显式指定
+<code>where Self: Sized</code>。</p>
+<h6 id="-拥有除接收器以外的-self-类型参数的函数">&gt; 拥有除接收器以外的
+Self 类型参数的函数</h6>
+<p>这一个要求很好理解。如果存在其他形参的类型是
+Self，那么在动态对象中不能保证这个 Self
+实际上与动态对象自己所指向的类型是同一个，在这种不可在编译期区分的类型，编译器自然无法生成代码。这里有一个容易混淆的点，那就是对应
+Self 的理解。Self 实际上指代的并不是 trait 类型这么简单，因为任何 trait
+都需要依附于一个具体的类型来实现，因而 Self 即指代具体类型，也可以指代
+trait 本身，笔者认为在这一点的理解上，Rust
+似乎没有给出清晰的解释（如果有，欢迎指正）。</p>
+<h6 id="例4-不可分发的函数具有-self-类型的形参">例(4)
+不可分发的函数：具有 Self 类型的形参</h6>
+<pre class="rust"><code>// 这个 trait 是动态兼容的，但是里面的方法不可分发到一个动态对象上
+trait NonDispatchable {
+    // `other` 可能与 self 对应的具体类型不相同
+    fn param(&amp;self, other: Self) where Self: Sized {}
+}</code></pre>
+<h6 id="例5-不可分发的函数没有接收器">例(5)
+不可分发的函数：没有接收器</h6>
+<pre class="rust"><code>// 这个 trait 是动态兼容的，但是里面的方法不可分发到一个动态对象上
+trait NonDispatchable {
+    // 没有接收器的方法不可分发，相对于静态方法
+    fn foo() where Self: Sized {}
+}</code></pre>
+<h6 id="-拥有不透明返回类型的函数不可分发">&gt;
+拥有不透明返回类型的函数不可分发</h6>
+<p>在参考书中，不透明的返回类型指的是 <code>async fn</code> 和
+<code>impl Trait</code> 的类型。对于
+<code>async fn</code>，这涉及到异步方法和 <code>future</code>
+的使用，笔者暂时没有精力搞清楚内部的机制（等我无限期回来填坑吧）。对于
+<code>impl Trait</code>，实际上和前面的泛型函数也是类似的，这种返回类型是由编译器屏蔽具体类型，让开发人员误以为使用了一个动态对象，但实际上这是在编译期间确定的，所有动态对象也无法分发。</p>
+<h6 id="例6-不可分发的函数返回-impl-trait">例(6) 不可分发的函数：返回
+<code>impl Trait</code></h6>
+<pre class="rust"><code>// 某个 trait
+trait TrA;
+
+// 这个 trait 是动态兼容的，但是里面的方法不可分发到一个动态对象上
+trait NonDispatchable {
+    // 返回 `impl TrA` 需要在编译期确定对象大小
+    fn foo(&amp;self) -&gt; impl TrA where Self: Sized;
+}</code></pre>
+<h6 id="-接收器的类型需要可动态分发的安全声明">&gt;
+接收器的类型需要可动态分发的安全声明</h6>
+<p>你应该会注意到剩下的要求有点特殊：</p>
+<ul>
+<li>接收器为下列类型之一：
+<ul>
+<li><code>&amp;Self</code> (也就是 <code>&amp;self</code>)；</li>
+<li><code>&amp;mut Self</code> (也就是
+<code>&amp;mut self</code>)；</li>
+<li><code>Box&lt;Self&gt;</code>；</li>
+<li><code>Rc&lt;Self&gt;</code>；</li>
+<li><code>Arc&lt;Self&gt;</code>；</li>
+<li><code>Pin&lt;P&gt;</code>，其中 <code>P</code> 是上述类型之一；</li>
+</ul></li>
+</ul>
+<p>我们很容易理解 <code>&amp;Self</code> 和 <code>&amp;mut Self</code>
+类型是可分发的；结合上一节对 <code>Receiver</code>
+的讲解，我们也可以接受上述的
+<code>Box</code>、<code>Rc</code>、<code>Arc</code>、<code>Pin</code>
+这些类型作为接收器，并且我们能够自定义封装类型作为接收器，然后让我们的封装类型允许拥有外部实现，但本节对动态分发的探讨恐怕会在此处产生一个疑问：实现了
+<code>Receiver</code> 就能一定能保证从一个动态对象分发到 self
+上是安全的吗？嗯，这时我们终于可以请出我们本节需要探讨的 trait
+了——<code>DispatchFromDyn</code>。这个 trait
+的使用我在下一小节再进行讨论，此处我只说明一个问题：<strong>使用没有实现这个
+trait 的 receiver，会使得这个函数不可分发，并且由于安全性使得 trait
+无法动态兼容</strong>。当然，这个 trait
+仍然只是一个标记，是否真的可以安全分发需要开发人员来保证，如果开发人员认为这其中没有危险，那么开发人员可以安全地为封装类型实现这个
+trait，以保证那些使用自定义封装类型作为 receiver 的函数可以分发。</p>
+<p>在这里，我们仍然是给出一个相关的反例，帮助读者理解这种情况下为什么不可分发，即便实际上这个反例不是一种强制性违法编译规则的——因为我们可以通过实现
+<code>DispatchFromDyn</code> 来告诉编译器这种做法是安全的。</p>
+<h6 id="例7-动态不兼容使用未实现-dispatchfromdyn-的类型作为接收器">例(7)
+动态不兼容：使用未实现 <code>DispatchFromDyn</code>
+的类型作为接收器</h6>
+<pre class="rust"><code>#![feature(arbitrary_self_types, dispatch_from_dyn)]
+
+use core::ops::{Deref, DispatchFromDyn};
+
+// 这是一个封装类型，封装了裸指针
+struct Wrap&lt;T: ?Sized&gt;(*const T);
+// 
+impl&lt;T: ?Sized&gt; Deref for Wrap&lt;T&gt; {
+    type Target = T;
+    fn deref(&amp;self) -&gt; &amp;Self::Target {
+        unsafe { &amp;*self.0 }
+    }
+}
+// 我们应当为 Wrap 实现 DispatchFromDyn
+
+struct StrA;
+
+// 经过实验，这个 trait 是动态不兼容的
+trait DynIncompatible {
+    fn foo(self: Wrap&lt;Self&gt;) {}
+}
+
+impl DynIncompatible for StrA {}
+
+fn main() {
+    // 这里已经无法通过编译了
+    // 由于 Wrap 作为接收器没有安全声明，
+    // 编译器认为 DynIncompatible 是动态不兼容的
+    let w = Wrap(&amp;StrA as *const StrA as *const dyn DynIncompatible);
+    w.foo();
+}</code></pre>
+<h3 id="3-动态分发安全dispatchfromdyn">3
+动态分发安全：DispatchFromDyn</h3>
+<p>实际上，前面的探讨已经十分详细了，不过我还是想在此给出核心库中对这个
+trait 的解释：</p>
+<blockquote>
+<p><code>DispatchFromDyn</code> 用于动态兼容实现的检查（特别是允许自定义
+self 类型时，即开启 feature(arbitrary_self_types) 或
+feature(arbitrary_self_types_pointers)
+），以确保方法的接收器类型可以分发</p>
+<p>注意：<code>DispatchFromDyn</code> 曾经被简称为
+<code>CoerceSized</code>（并且有过不一样的翻译）</p>
+<p>想象一下我们有一个 trait 对象 <code>t</code>，其类型是
+<code>&amp;dyn Tr</code>，而 <code>Tr</code> 是某个具有一个方法的
+trait，这个方法是 <code>m</code>，其定义为
+<code>fn m(&amp;self);</code>。当调用 <code>t.m()</code> 的时候，接收器
+<code>t</code> 是一个胖指针，但是 <code>m</code>
+的实现期望传入一个瘦指针作为
+<code>&amp;self</code>（具体类型的引用）。编译器必须生成一个从 trait
+对象/胖指针到具体类型引用/瘦指针的隐式转换。实现
+<code>DispatchFromDyn</code> 表示这个转换是允许的，因此实现
+<code>DispatchFromDyn</code> 的类型可以安全地用在动态兼容方法的 self
+类型当中。（在上面的例子中，编译器要求 <code>&amp;'a U</code> 实现
+<code>DispatchFromDyn</code>）。</p>
+<p><code>DispatchFromDyn</code>
+并没有指定如何从胖指针转换为瘦指针；这种转换是硬接入编译器的。为了使转换能够成功，下面的属性是必要的（也就是说，只有具有这些属性的类型才可以实现
+<code>DispatchFromDyn</code>，这些属性也会被编译器检查），总的来说这下面有两条属性，满足其一即可：</p>
+<ul>
+<li>其一，<code>Self</code> 和 <code>T</code>
+要么都是引用，要么都是裸指针；此外，也可以都是可变的；</li>
+<li>其二，所有下面的条件都需要满足：
+<ul>
+<li><code>Self</code> 和 <code>T</code>
+必须具有相同的构造函数，并且只能在单一类型参数形式上有所不同（也就是
+<em>转换类型</em>，例如，<code>impl DispatchFromDyn&lt;Rc&lt;T&gt;&gt; for Rc&lt;U&gt;</code>
+是可以的，单一类型参数就是转换类型（也就是 <code>T</code> 或者
+<code>U</code>），而
+<code>impl DispatchFromDyn&lt;Arc&lt;T&gt;&gt; for Rc&lt;U&gt;</code>
+则不可以）；</li>
+<li><code>Self</code> 的定义必须是一个结构体；</li>
+<li><code>Self</code> 的定义必须不能是 <code>#[repr(packed)]</code> 或者
+<code>#[repr(C)]</code>；</li>
+<li>除了按地址-1对齐、0-大小的域，<code>Self</code>
+的定义只能有一个域，并且这个域的类型必须是转换类型。进一步地，<code>Self</code>
+的域类型必须实现 <code>DispatchFromDyn&lt;F&gt;</code> 其中
+<code>F</code> 表示 <code>T</code> 的域类型；</li>
+</ul></li>
+</ul>
+</blockquote>
+<p>核心库中的注释当然还给出了一个简单的用法：</p>
+<h5 id="例8-dispatchfromdyn-的简单用法">例(8) DispatchFromDyn
+的简单用法</h5>
+<pre class="rust"><code>#![feature(dispatch_from_dyn, unsize)]
+use core::{ops::DispatchFromDyn, marker::Unsize};
+struct Rc&lt;T: ?Sized&gt;(std::rc::Rc&lt;T&gt;);
+impl&lt;T: ?Sized + Unsized&lt;U&gt;, U: ?Sized&gt; DispatchFromDyn&lt;Rc&lt;U&gt;&gt; for Rc&lt;T&gt; {}</code></pre>
+<p>当我们需要自定义一个封装器，并实现 <code>DispatchFromDyn</code>
+的时候，就可以参考这个用了。例如，在<a href="#例7-动态不兼容使用未实现-dispatchfromdyn-的类型作为接收器">例(7)</a>当中，我们可以这样为
+<code>Wrap</code> 实现 <code>DispatchFromDyn</code>。</p>
+<pre class="rust"><code>impl&lt;T: ?Sized + Unsize&lt;U&gt;, U: ?Sized&gt; DispatchFromDyn&lt;Wrap&lt;U&gt;&gt; for Wrap&lt;T&gt; {}
+
+...
+
+fn main() {
+    // 此时，由于 DispatchFromDyn 的实现，DynIncompatible 实现了动态兼容，
+    // 因而此处的编译通过了！
+    let w = Wrap(&amp;StrA as *const StrA as *const dyn DynIncompatible);
+    // 并且此处的函数调用可以正常运行
+    w.foo();
+}</code></pre>
+<h3 id="结语">结语</h3>
+<p>本节我们探讨了 Rust 中的动态兼容与可分发函数等概念，并在最后给出
+<code>DispatchFromDyn</code> 的作用和用法，再结合前几节的内容，可以说
+Rust 的动态分发的设计哲学已经探讨得差不多了。我们可以看到 Rust
+的设计者围绕 trait
+为中心，以核心库为语言的基本支撑，让整个语言具有了自洽而灵活的优雅。即便开发人员时常为
+Rust 陡峭的学习曲线所困扰，但是遵循 Rust
+设计哲学写出来的代码更具有安全保障，更能避免开发人员在安全意识上的疏漏。这几篇的内容难度都不小，笔者能力有限，难免有错误或者疏漏，欢迎在下面进行评论或者直接与我联系。</p>
+<aside id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn1"><p><a target="_blank" rel="noopener" href="https://doc.rust-lang.org/stable/reference/items/traits.html#dyn-compatibility">Rust
+参考 : 6.11 Traits : Dyn compatibility</a><a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p><a target="_blank" rel="noopener" href="https://doc.rust-lang.org/stable/reference/items/traits.html#dyn-compatibility">Rust
+参考 : 6.11 Traits : Dyn compatibility</a><a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p><a target="_blank" rel="noopener" href="https://doc.rust-lang.org/stable/reference/items/traits.html#supertraits">Rust
+参考 : 6.11 Traits : Supertraits</a><a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</aside>
 
     </div>
     
